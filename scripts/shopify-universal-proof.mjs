@@ -1,6 +1,10 @@
 import "dotenv/config";
 
 import {
+  buildPlatformPlans,
+} from "../src/application/build-platform-plans.mjs";
+
+import {
   getDevShopifyAccessToken,
 } from "../src/connectors/shopify/dev-auth.mjs";
 
@@ -12,6 +16,8 @@ import {
 import {
   createUniversalCampaign,
 } from "../src/domain/universal-campaign.mjs";
+
+
 
 const shop = process.env.SHOPIFY_SHOP;
 const clientId = process.env.SHOPIFY_CLIENT_ID;
@@ -72,10 +78,16 @@ const campaign = createUniversalCampaign({
   },
 
   budget: {
-    total: 100,
-    currency: product.currency,
-    durationDays: 7,
+  total: 100,
+  currency: product.currency,
+  durationDays: 7,
+
+  allocation: {
+    mode: "MANUAL",
+    meta: 60,
+    tiktok: 40,
   },
+},
 
   platforms: {
     meta: {
@@ -98,3 +110,10 @@ const campaign = createUniversalCampaign({
 
 console.log("\nUniversal Campaign created from Shopify ✓\n");
 console.log(JSON.stringify(campaign, null, 2));
+
+console.log("\n5. Building platform plans...");
+
+const platformPlans = buildPlatformPlans(campaign);
+
+console.log("Platform plans created ✓\n");
+console.log(JSON.stringify(platformPlans, null, 2));

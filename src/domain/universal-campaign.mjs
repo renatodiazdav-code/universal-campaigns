@@ -30,6 +30,25 @@ export function createUniversalCampaign(input) {
     throw new Error("Creative type is required");
   }
 
+const metaBudget = input.budget.allocation?.meta ?? 0;
+const tiktokBudget = input.budget.allocation?.tiktok ?? 0;
+
+if (!metaEnabled && metaBudget > 0) {
+  throw new Error("Meta budget cannot be assigned when Meta is disabled");
+}
+
+if (!tiktokEnabled && tiktokBudget > 0) {
+  throw new Error("TikTok budget cannot be assigned when TikTok is disabled");
+}
+
+const allocatedBudget = metaBudget + tiktokBudget;
+
+if (allocatedBudget !== input.budget.total) {
+  throw new Error(
+    `Platform budgets must equal total budget. Expected ${input.budget.total}, got ${allocatedBudget}`
+  );
+}
+  
   return {
     version: 1,
 
@@ -55,10 +74,16 @@ export function createUniversalCampaign(input) {
     },
 
     budget: {
-      total: input.budget.total,
-      currency: input.budget.currency,
-      durationDays: input.budget.durationDays,
-    },
+  total: input.budget.total,
+  currency: input.budget.currency,
+  durationDays: input.budget.durationDays,
+
+  allocation: {
+    mode: input.budget.allocation?.mode ?? "MANUAL",
+    meta: input.budget.allocation?.meta ?? 0,
+    tiktok: input.budget.allocation?.tiktok ?? 0,
+  },
+},
 
     platforms: {
       meta: {
