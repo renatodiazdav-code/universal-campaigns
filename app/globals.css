@@ -1,0 +1,253 @@
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: #ffffff;
+  color: #111111;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+.shell {
+  width: min(1100px, calc(100% - 48px));
+  min-height: 100vh;
+  margin: 0 auto;
+}
+
+.header {
+  height: 90px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #eeeeee;
+}
+
+.logo {
+  font-size: 26px;
+  letter-spacing: -1px;
+}
+
+.badge {
+  padding: 8px 13px;
+  border: 1px solid #e5e5e5;
+  border-radius: 999px;
+  color: #666666;
+  font-size: 13px;
+}
+
+.hero {
+  max-width: 760px;
+  padding: 110px 0 90px;
+}
+
+.eyebrow {
+  margin: 0 0 22px;
+  color: #2563eb;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+}
+
+h1 {
+  margin: 0;
+  font-size: clamp(54px, 8vw, 88px);
+  line-height: 0.98;
+  letter-spacing: -0.055em;
+}
+
+.subtitle {
+  max-width: 650px;
+  margin: 32px 0;
+  color: #666666;
+  font-size: 20px;
+  line-height: 1.6;
+}
+
+button {
+  border: 0;
+  border-radius: 10px;
+  background: #111111;
+  color: white;
+  padding: 14px 22px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.platforms {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  align-items: center;
+  border-top: 1px solid #eeeeee;
+  padding: 30px 0;
+  color: #777777;
+}
+
+.platforms strong {
+  color: #111111;
+}
+
+.campaignPage {
+  width: min(1100px, calc(100% - 48px));
+  min-height: 100vh;
+  margin: 0 auto;
+}
+
+.campaignHeader {
+  height: 90px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #eeeeee;
+}
+
+.campaignHeader .logo {
+  color: #111111;
+  text-decoration: none;
+}
+
+.stepLabel {
+  color: #777777;
+  font-size: 14px;
+}
+
+.campaignContent {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 80px 0;
+}
+
+.campaignTitle {
+  margin: 0;
+  font-size: 48px;
+  line-height: 1.1;
+  letter-spacing: -0.04em;
+}
+
+.campaignSubtitle {
+  margin: 18px 0 40px;
+  color: #666666;
+  font-size: 18px;
+}
+
+.loadingText,
+.errorText {
+  margin: 30px 0;
+  color: #666666;
+}
+
+.errorText {
+  color: #b91c1c;
+}
+
+.productGrid {
+  display: grid;
+  gap: 16px;
+}
+
+.productCard {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 90px 1fr 32px;
+  gap: 20px;
+  align-items: center;
+  padding: 16px;
+  border: 1px solid #e5e5e5;
+  border-radius: 16px;
+  background: white;
+  color: #111111;
+  text-align: left;
+  cursor: pointer;
+}
+
+.productCard:hover {
+  border-color: #bbbbbb;
+}
+
+.productCard.selected {
+  border: 2px solid #111111;
+}
+
+.productImage {
+  width: 90px;
+  height: 90px;
+  object-fit: cover;
+  border-radius: 12px;
+  background: #f5f5f5;
+}
+
+.productInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.productInfo strong {
+  font-size: 18px;
+}
+
+.productInfo span {
+  color: #666666;
+}
+
+.selectionIndicator {
+  width: 26px;
+  height: 26px;
+  border: 1px solid #d5d5d5;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 14px;
+}
+
+.selected .selectionIndicator {
+  background: #111111;
+  border-color: #111111;
+  color: white;
+}
+
+.campaignActions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 40px;
+  padding-top: 30px;
+  border-top: 1px solid #eeeeee;
+}
+
+.secondaryButton {
+  color: #555555;
+  text-decoration: none;
+}
+
+.continueButton {
+  padding: 14px 24px;
+}
+
+.continueButton:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.primaryButton {
+  display: inline-block;
+  border-radius: 10px;
+  background: #111111;
+  color: white;
+  padding: 14px 22px;
+  text-decoration: none;
+  font-weight: 600;
+}
