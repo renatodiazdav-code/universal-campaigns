@@ -1,6 +1,15 @@
 import { createMetaClient } from "../../../../src/connectors/meta/client.mjs";
 
+
 export async function POST(request) {
+
+  if (process.env.NODE_ENV !== "development") {
+  return Response.json(
+    { error: "Meta sandbox endpoint is only available in development" },
+    { status: 403 }
+  );
+}
+
   try {
     const { metaPlan } = await request.json();
 
