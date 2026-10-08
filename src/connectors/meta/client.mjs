@@ -64,8 +64,62 @@ export function createMetaClient({ adAccountId, accessToken }) {
     return result;
   }
 
+  async function createAdSet({
+  name,
+  campaignId,
+  dailyBudget,
+  countries = ["PE"],
+  ageMin = 18,
+  ageMax = 35,
+  status = "PAUSED",
+}) {
+  
+  const response = await fetch(
+    `${META_GRAPH_URL}/act_${adAccountId}/adsets`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: new URLSearchParams({
+  name,
+  campaign_id: campaignId,
+  daily_budget: String(dailyBudget),
+  billing_event: "IMPRESSIONS",
+  optimization_goal: "LINK_CLICKS",
+  bid_strategy: "LOWEST_COST_WITHOUT_CAP",
+
+  targeting: JSON.stringify({
+  geo_locations: {
+    countries,
+  },
+  age_min: ageMin,
+  age_max: ageMax,
+  targeting_automation: {
+    advantage_audience: 0,
+  },
+}),
+
+  status,
+  access_token: accessToken,
+}),
+    }
+  );
+
+  const result = await response.json();
+
+  if (!response.ok) {
+    throw new Error(
+      `Meta create ad set failed: ${JSON.stringify(result)}`
+    );
+  }
+
+  return result;
+}
+
   return {
-    createCampaign,
-    getCampaign,
-  };
+  createCampaign,
+  getCampaign,
+  createAdSet,
+};
 }
