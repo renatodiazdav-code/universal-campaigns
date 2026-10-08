@@ -1,3 +1,5 @@
+import { NextResponse } from "next/server";
+
 import { createMetaClient } from "../../../../../src/connectors/meta/client.mjs";
 import { discoverMetaSetup } from "../../../../../src/application/discover-meta-setup.mjs";
 
@@ -6,10 +8,14 @@ export async function GET(request) {
     const url = new URL(request.url);
 
     const code = url.searchParams.get("code");
+    const returnedState = url.searchParams.get("state");
     const error = url.searchParams.get("error");
 
+    const storedState =
+      request.cookies.get("meta_oauth_state")?.value;
+
     if (error) {
-      return Response.json(
+      const response = NextResponse.json(
         {
           status: "AUTH_ERROR",
           error,
@@ -18,10 +24,34 @@ export async function GET(request) {
           status: 400,
         }
       );
+
+      response.cookies.delete("meta_oauth_state");
+
+      return response;
+    }
+
+    if (
+      !returnedState ||
+      !storedState ||
+      returnedState !== storedState
+    ) {
+      const response = NextResponse.json(
+        {
+          status: "AUTH_ERROR",
+          error: "Invalid OAuth state",
+        },
+        {
+          status: 400,
+        }
+      );
+
+      response.cookies.delete("meta_oauth_state");
+
+      return response;
     }
 
     if (!code) {
-      return Response.json(
+      const response = NextResponse.json(
         {
           status: "AUTH_ERROR",
           error: "Missing Meta authorization code",
@@ -30,13 +60,17 @@ export async function GET(request) {
           status: 400,
         }
       );
+
+      response.cookies.delete("meta_oauth_state");
+
+      return response;
     }
 
     const appId = process.env.META_APP_ID;
     const appSecret = process.env.META_APP_SECRET;
 
     if (!appId || !appSecret) {
-      return Response.json(
+      return NextResponse.json(
         {
           status: "SERVER_ERROR",
           error: "Meta app credentials are missing",
@@ -81,14 +115,18 @@ export async function GET(request) {
 
     const setup = await discoverMetaSetup(meta);
 
-    return Response.json({
+    const response = NextResponse.json({
       status: "CONNECTED",
       setup,
     });
+
+    response.cookies.delete("meta_oauth_state");
+
+    return response;
   } catch (error) {
     console.error("Meta OAuth callback error:", error);
 
-    return Response.json(
+    const response = NextResponse.json(
       {
         status: "ERROR",
         error:
@@ -99,5 +137,9 @@ export async function GET(request) {
         status: 500,
       }
     );
+
+    response.cookies.delete("meta_oauth_state");
+
+    return response;
   }
 }

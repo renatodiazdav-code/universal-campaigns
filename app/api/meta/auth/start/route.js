@@ -1,8 +1,11 @@
+import { NextResponse } from "next/server";
+import crypto from "node:crypto";
+
 export async function GET() {
   const appId = process.env.META_APP_ID;
 
   if (!appId) {
-    return Response.json(
+    return NextResponse.json(
       {
         error: "META_APP_ID is missing",
       },
@@ -22,15 +25,28 @@ export async function GET() {
     "business_management",
   ];
 
+  const state = crypto.randomBytes(32).toString("hex");
+
   const params = new URLSearchParams({
     client_id: appId,
     redirect_uri: redirectUri,
     scope: scopes.join(","),
     response_type: "code",
+    state,
   });
 
   const authorizationUrl =
     `https://www.facebook.com/v26.0/dialog/oauth?${params.toString()}`;
 
-  return Response.redirect(authorizationUrl);
+  const response = NextResponse.redirect(authorizationUrl);
+
+  response.cookies.set("meta_oauth_state", state, {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: false,
+    maxAge: 60 * 10,
+    path: "/",
+  });
+
+  return response;
 }
