@@ -53,6 +53,14 @@ export default function NewCampaignPage() {
         const data = await response.json();
 
         setMetaSetup(data);
+        if (data.status !== "READY") {
+          setPlatforms((current) => ({
+            ...current,
+            meta: false,
+            facebook: false,
+            instagram: false,
+          }));
+        }
       } catch (error) {
         console.error("Could not load Meta setup:", error);
 
@@ -386,15 +394,22 @@ export default function NewCampaignPage() {
 
             <div className="platformGrid">
               <button
+                disabled={metaSetup?.status !== "READY"}
                 type="button"
                 className={`platformCard ${platforms.meta ? "selected" : ""
                   }`}
-                onClick={() =>
+                onClick={() => {
+                  if (metaSetup?.status !== "READY") {
+                    return;
+                  }
+
                   setPlatforms((current) => ({
                     ...current,
                     meta: !current.meta,
-                  }))
-                }
+                    facebook: !current.meta,
+                    instagram: !current.meta,
+                  }));
+                }}
               >
                 <div>
                   <strong>Meta</strong>
