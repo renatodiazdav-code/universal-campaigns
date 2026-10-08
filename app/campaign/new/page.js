@@ -43,6 +43,25 @@ const [creative, setCreative] = useState({
   const [creatingMetaCampaign, setCreatingMetaCampaign] = useState(false);
   const [metaCampaignResult, setMetaCampaignResult] = useState(null);
   const [metaCampaignError, setMetaCampaignError] = useState("");
+  const [metaSetup, setMetaSetup] = useState(null);
+  const [metaSetupLoading, setMetaSetupLoading] = useState(true);
+
+  useEffect(() => {
+  async function loadMetaSetup() {
+    try {
+      const response = await fetch("/api/meta/setup");
+      const data = await response.json();
+
+      if (response.ok) {
+        setMetaSetup(data);
+      }
+    } finally {
+      setMetaSetupLoading(false);
+    }
+  }
+
+  loadMetaSetup();
+}, []);
 
   useEffect(() => {
     async function loadProducts() {
@@ -330,6 +349,30 @@ async function createMetaSandboxCampaign() {
             <p className="campaignSubtitle">
               Choose the platforms where this campaign will run.
             </p>
+
+            <div className="connectionStatus">
+  <div>
+  <span className="connectionLabel">
+    CONNECTED ACCOUNT
+  </span>
+
+  <strong>
+    {metaSetupLoading
+      ? "Checking Meta..."
+      : metaSetup?.status === "READY"
+        ? "Meta connected"
+        : "Meta not connected"}
+  </strong>
+</div>
+
+  <div
+    className={`connectionDot ${
+      metaSetup?.status === "READY" ? "connected" : ""
+    }`}
+  >
+    {metaSetup?.status === "READY" ? "✓" : ""}
+  </div>
+</div>
 
             <div className="platformGrid">
               <button
