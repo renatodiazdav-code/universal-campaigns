@@ -16,24 +16,24 @@ export default function NewCampaignPage() {
   });
 
   const [audience, setAudience] = useState({
-  country: "PE",
-  ageMin: 18,
-  ageMax: 35,
-  gender: "ALL",
-});
+    country: "PE",
+    ageMin: 18,
+    ageMax: 35,
+    gender: "ALL",
+  });
 
-const [budget, setBudget] = useState({
-  total: 100,
-  durationDays: 7,
-  meta: 60,
-  tiktok: 40,
-});
+  const [budget, setBudget] = useState({
+    total: 100,
+    durationDays: 7,
+    meta: 60,
+    tiktok: 40,
+  });
 
-const [creative, setCreative] = useState({
-  primaryText: "",
-  headline: "",
-  destinationUrl: "",
-});
+  const [creative, setCreative] = useState({
+    primaryText: "",
+    headline: "",
+    destinationUrl: "",
+  });
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -47,21 +47,25 @@ const [creative, setCreative] = useState({
   const [metaSetupLoading, setMetaSetupLoading] = useState(true);
 
   useEffect(() => {
-  async function loadMetaSetup() {
-    try {
-      const response = await fetch("/api/meta/setup");
-      const data = await response.json();
+    async function loadMetaSetup() {
+      try {
+        const response = await fetch("/api/meta/setup");
+        const data = await response.json();
 
-      if (response.ok) {
         setMetaSetup(data);
-      }
-    } finally {
-      setMetaSetupLoading(false);
-    }
-  }
+      } catch (error) {
+        console.error("Could not load Meta setup:", error);
 
-  loadMetaSetup();
-}, []);
+        setMetaSetup({
+          status: "ERROR",
+        });
+      } finally {
+        setMetaSetupLoading(false);
+      }
+    }
+
+    loadMetaSetup();
+  }, []);
 
   useEffect(() => {
     async function loadProducts() {
@@ -87,153 +91,153 @@ const [creative, setCreative] = useState({
   const hasSelectedPlatform = platforms.meta || platforms.tiktok;
 
   const selectedProduct =
-  products.find((product) => product.id === selectedProductId) || null;
+    products.find((product) => product.id === selectedProductId) || null;
 
   useEffect(() => {
-  if (!selectedProduct) {
-    return;
-  }
+    if (!selectedProduct) {
+      return;
+    }
 
-  setCreative({
-    primaryText: `Discover ${selectedProduct.title}.`,
-    headline: selectedProduct.title,
-    destinationUrl: selectedProduct.destinationUrl || "",
-  });
-}, [selectedProduct]);
+    setCreative({
+      primaryText: `Discover ${selectedProduct.title}.`,
+      headline: selectedProduct.title,
+      destinationUrl: selectedProduct.destinationUrl || "",
+    });
+  }, [selectedProduct]);
 
   const expectedMetaBudget =
-  platforms.meta && !platforms.tiktok
-    ? budget.total
-    : budget.meta;
+    platforms.meta && !platforms.tiktok
+      ? budget.total
+      : budget.meta;
 
-const expectedTikTokBudget =
-  platforms.tiktok && !platforms.meta
-    ? budget.total
-    : budget.tiktok;
+  const expectedTikTokBudget =
+    platforms.tiktok && !platforms.meta
+      ? budget.total
+      : budget.tiktok;
 
-const budgetIsValid =
-  budget.total > 0 &&
-  budget.durationDays > 0 &&
-  expectedMetaBudget + expectedTikTokBudget === budget.total;
+  const budgetIsValid =
+    budget.total > 0 &&
+    budget.durationDays > 0 &&
+    expectedMetaBudget + expectedTikTokBudget === budget.total;
 
   async function generateCampaignPlan() {
-  if (!selectedProduct) {
-    return;
-  }
-
-  setGeneratingPlan(true);
-  setPlanError("");
-
-  try {
-    const campaignInput = {
-      name: `${selectedProduct.title} Campaign`,
-      goal: "SALES",
-
-      product: {
-        source: "SHOPIFY",
-        id: selectedProduct.id,
-        title: selectedProduct.title,
-        price: Number(selectedProduct.price),
-        currency: selectedProduct.currency,
-        imageUrl: selectedProduct.imageUrl,
-        destinationUrl: selectedProduct.destinationUrl,
-      },
-
-      audience: {
-        countries: [audience.country],
-        ageMin: audience.ageMin,
-        ageMax: audience.ageMax,
-        gender: audience.gender,
-      },
-
-      budget: {
-        total: budget.total,
-        currency: selectedProduct.currency,
-        durationDays: budget.durationDays,
-
-        allocation: {
-          mode: "MANUAL",
-          meta: platforms.meta ? expectedMetaBudget : 0,
-          tiktok: platforms.tiktok ? expectedTikTokBudget : 0,
-        },
-      },
-
-      platforms: {
-        meta: {
-          enabled: platforms.meta,
-          facebook: platforms.meta && platforms.facebook,
-          instagram: platforms.meta && platforms.instagram,
-        },
-
-        tiktok: {
-          enabled: platforms.tiktok,
-        },
-      },
-
-      creative: {
-        type: "IMAGE",
-        primaryText: creative.primaryText,
-        headline: creative.headline,
-        destinationUrl: creative.destinationUrl,
-      },
-    };
-
-    const response = await fetch("/api/campaign-plan", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(campaignInput),
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.error || "Could not generate campaign plan");
+    if (!selectedProduct) {
+      return;
     }
 
-    setPlanResult(data);
-  } catch (error) {
-    setPlanError(error.message);
-  } finally {
-    setGeneratingPlan(false);
+    setGeneratingPlan(true);
+    setPlanError("");
+
+    try {
+      const campaignInput = {
+        name: `${selectedProduct.title} Campaign`,
+        goal: "SALES",
+
+        product: {
+          source: "SHOPIFY",
+          id: selectedProduct.id,
+          title: selectedProduct.title,
+          price: Number(selectedProduct.price),
+          currency: selectedProduct.currency,
+          imageUrl: selectedProduct.imageUrl,
+          destinationUrl: selectedProduct.destinationUrl,
+        },
+
+        audience: {
+          countries: [audience.country],
+          ageMin: audience.ageMin,
+          ageMax: audience.ageMax,
+          gender: audience.gender,
+        },
+
+        budget: {
+          total: budget.total,
+          currency: selectedProduct.currency,
+          durationDays: budget.durationDays,
+
+          allocation: {
+            mode: "MANUAL",
+            meta: platforms.meta ? expectedMetaBudget : 0,
+            tiktok: platforms.tiktok ? expectedTikTokBudget : 0,
+          },
+        },
+
+        platforms: {
+          meta: {
+            enabled: platforms.meta,
+            facebook: platforms.meta && platforms.facebook,
+            instagram: platforms.meta && platforms.instagram,
+          },
+
+          tiktok: {
+            enabled: platforms.tiktok,
+          },
+        },
+
+        creative: {
+          type: "IMAGE",
+          primaryText: creative.primaryText,
+          headline: creative.headline,
+          destinationUrl: creative.destinationUrl,
+        },
+      };
+
+      const response = await fetch("/api/campaign-plan", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(campaignInput),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Could not generate campaign plan");
+      }
+
+      setPlanResult(data);
+    } catch (error) {
+      setPlanError(error.message);
+    } finally {
+      setGeneratingPlan(false);
+    }
   }
-}
 
-async function createMetaSandboxCampaign() {
-  if (!planResult?.plans?.meta) {
-    return;
-  }
-
-  setCreatingMetaCampaign(true);
-  setMetaCampaignError("");
-
-  try {
-    const response = await fetch("/api/meta/sandbox-campaign", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        metaPlan: planResult.plans.meta,
-      }),
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(
-        data.error || "Could not create Meta sandbox campaign"
-      );
+  async function createMetaSandboxCampaign() {
+    if (!planResult?.plans?.meta) {
+      return;
     }
 
-    setMetaCampaignResult(data.campaign);
-  } catch (error) {
-    setMetaCampaignError(error.message);
-  } finally {
-    setCreatingMetaCampaign(false);
+    setCreatingMetaCampaign(true);
+    setMetaCampaignError("");
+
+    try {
+      const response = await fetch("/api/meta/sandbox-campaign", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          metaPlan: planResult.plans.meta,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.error || "Could not create Meta sandbox campaign"
+        );
+      }
+
+      setMetaCampaignResult(data.campaign);
+    } catch (error) {
+      setMetaCampaignError(error.message);
+    } finally {
+      setCreatingMetaCampaign(false);
+    }
   }
-}
 
   return (
     <main className="campaignPage">
@@ -283,9 +287,8 @@ async function createMetaSandboxCampaign() {
                   <button
                     key={product.id}
                     type="button"
-                    className={`productCard ${
-                      selected ? "selected" : ""
-                    }`}
+                    className={`productCard ${selected ? "selected" : ""
+                      }`}
                     onClick={() =>
                       setSelectedProductId(product.id)
                     }
@@ -351,35 +354,41 @@ async function createMetaSandboxCampaign() {
             </p>
 
             <div className="connectionStatus">
-  <div>
-  <span className="connectionLabel">
-    CONNECTED ACCOUNT
-  </span>
+              <div>
+                <span className="connectionLabel">
+                  META ACCOUNT
+                </span>
 
-  <strong>
-    {metaSetupLoading
-      ? "Checking Meta..."
-      : metaSetup?.status === "READY"
-        ? "Meta connected"
-        : "Meta not connected"}
-  </strong>
-</div>
+                <strong>
+                  {metaSetupLoading
+                    ? "Checking connection..."
+                    : metaSetup?.status === "READY"
+                      ? "Meta connected"
+                      : "Meta not connected"}
+                </strong>
+              </div>
 
-  <div
-    className={`connectionDot ${
-      metaSetup?.status === "READY" ? "connected" : ""
-    }`}
-  >
-    {metaSetup?.status === "READY" ? "✓" : ""}
-  </div>
-</div>
+              {metaSetupLoading ? (
+                <div className="connectionDot" />
+              ) : metaSetup?.status === "READY" ? (
+                <div className="connectionDot connected">
+                  ✓
+                </div>
+              ) : (
+                <a
+                  href="/api/meta/auth/start"
+                  className="secondaryButton"
+                >
+                  Connect Meta
+                </a>
+              )}
+            </div>
 
             <div className="platformGrid">
               <button
                 type="button"
-                className={`platformCard ${
-                  platforms.meta ? "selected" : ""
-                }`}
+                className={`platformCard ${platforms.meta ? "selected" : ""
+                  }`}
                 onClick={() =>
                   setPlatforms((current) => ({
                     ...current,
@@ -401,9 +410,8 @@ async function createMetaSandboxCampaign() {
 
               <button
                 type="button"
-                className={`platformCard ${
-                  platforms.tiktok ? "selected" : ""
-                }`}
+                className={`platformCard ${platforms.tiktok ? "selected" : ""
+                  }`}
                 onClick={() =>
                   setPlatforms((current) => ({
                     ...current,
@@ -444,627 +452,627 @@ async function createMetaSandboxCampaign() {
         )}
 
         {step === 3 && (
-  <>
-    <p className="eyebrow">CREATE CAMPAIGN</p>
+          <>
+            <p className="eyebrow">CREATE CAMPAIGN</p>
 
-    <h1 className="campaignTitle">
-      Audience and budget
-    </h1>
+            <h1 className="campaignTitle">
+              Audience and budget
+            </h1>
 
-    <p className="campaignSubtitle">
-      Tell Relay who you want to reach and how much you want to spend.
-    </p>
-    
-    <div className="formSection">
-  <h2>Audience</h2>
+            <p className="campaignSubtitle">
+              Tell Relay who you want to reach and how much you want to spend.
+            </p>
 
-  <label className="field">
-    <span>Country</span>
+            <div className="formSection">
+              <h2>Audience</h2>
 
-    <select
-      value={audience.country}
-      onChange={(event) =>
-        setAudience((current) => ({
-          ...current,
-          country: event.target.value,
-        }))
-      }
-    >
-      <option value="PE">Peru</option>
-      <option value="US">United States</option>
-      <option value="MX">Mexico</option>
-      <option value="CO">Colombia</option>
-      <option value="CL">Chile</option>
-    </select>
-  </label>
+              <label className="field">
+                <span>Country</span>
 
-  <div className="fieldRow">
-    <label className="field">
-      <span>Minimum age</span>
+                <select
+                  value={audience.country}
+                  onChange={(event) =>
+                    setAudience((current) => ({
+                      ...current,
+                      country: event.target.value,
+                    }))
+                  }
+                >
+                  <option value="PE">Peru</option>
+                  <option value="US">United States</option>
+                  <option value="MX">Mexico</option>
+                  <option value="CO">Colombia</option>
+                  <option value="CL">Chile</option>
+                </select>
+              </label>
 
-      <input
-        type="number"
-        min="18"
-        max="65"
-        value={audience.ageMin}
-        onChange={(event) =>
-          setAudience((current) => ({
-            ...current,
-            ageMin: Number(event.target.value),
-          }))
-        }
-      />
-    </label>
+              <div className="fieldRow">
+                <label className="field">
+                  <span>Minimum age</span>
 
-    <label className="field">
-      <span>Maximum age</span>
+                  <input
+                    type="number"
+                    min="18"
+                    max="65"
+                    value={audience.ageMin}
+                    onChange={(event) =>
+                      setAudience((current) => ({
+                        ...current,
+                        ageMin: Number(event.target.value),
+                      }))
+                    }
+                  />
+                </label>
 
-      <input
-        type="number"
-        min="18"
-        max="65"
-        value={audience.ageMax}
-        onChange={(event) =>
-          setAudience((current) => ({
-            ...current,
-            ageMax: Number(event.target.value),
-          }))
-        }
-      />
-    </label>
-  </div>
+                <label className="field">
+                  <span>Maximum age</span>
 
-  <label className="field">
-    <span>Gender</span>
+                  <input
+                    type="number"
+                    min="18"
+                    max="65"
+                    value={audience.ageMax}
+                    onChange={(event) =>
+                      setAudience((current) => ({
+                        ...current,
+                        ageMax: Number(event.target.value),
+                      }))
+                    }
+                  />
+                </label>
+              </div>
 
-    <select
-      value={audience.gender}
-      onChange={(event) =>
-        setAudience((current) => ({
-          ...current,
-          gender: event.target.value,
-        }))
-      }
-    >
-      <option value="ALL">All</option>
-      <option value="MALE">Men</option>
-      <option value="FEMALE">Women</option>
-    </select>
-  </label>
-</div>
+              <label className="field">
+                <span>Gender</span>
 
-<div className="formSection">
-  <h2>Budget</h2>
+                <select
+                  value={audience.gender}
+                  onChange={(event) =>
+                    setAudience((current) => ({
+                      ...current,
+                      gender: event.target.value,
+                    }))
+                  }
+                >
+                  <option value="ALL">All</option>
+                  <option value="MALE">Men</option>
+                  <option value="FEMALE">Women</option>
+                </select>
+              </label>
+            </div>
 
-  <div className="fieldRow">
-    <label className="field">
-      <span>Total budget (PEN)</span>
+            <div className="formSection">
+              <h2>Budget</h2>
 
-      <input
-        type="number"
-        min="1"
-        value={budget.total}
-        onChange={(event) =>
-          setBudget((current) => ({
-            ...current,
-            total: Number(event.target.value),
-          }))
-        }
-      />
-    </label>
+              <div className="fieldRow">
+                <label className="field">
+                  <span>Total budget (PEN)</span>
 
-    <label className="field">
-      <span>Duration (days)</span>
+                  <input
+                    type="number"
+                    min="1"
+                    value={budget.total}
+                    onChange={(event) =>
+                      setBudget((current) => ({
+                        ...current,
+                        total: Number(event.target.value),
+                      }))
+                    }
+                  />
+                </label>
 
-      <input
-        type="number"
-        min="1"
-        value={budget.durationDays}
-        onChange={(event) =>
-          setBudget((current) => ({
-            ...current,
-            durationDays: Number(event.target.value),
-          }))
-        }
-      />
-    </label>
-  </div>
+                <label className="field">
+                  <span>Duration (days)</span>
 
-  {platforms.meta && platforms.tiktok && (
-    <div className="fieldRow">
-      <label className="field">
-        <span>Meta budget (PEN)</span>
+                  <input
+                    type="number"
+                    min="1"
+                    value={budget.durationDays}
+                    onChange={(event) =>
+                      setBudget((current) => ({
+                        ...current,
+                        durationDays: Number(event.target.value),
+                      }))
+                    }
+                  />
+                </label>
+              </div>
 
-        <input
-          type="number"
-          min="0"
-          value={budget.meta}
-          onChange={(event) =>
-            setBudget((current) => ({
-              ...current,
-              meta: Number(event.target.value),
-            }))
-          }
-        />
-      </label>
+              {platforms.meta && platforms.tiktok && (
+                <div className="fieldRow">
+                  <label className="field">
+                    <span>Meta budget (PEN)</span>
 
-      <label className="field">
-        <span>TikTok budget (PEN)</span>
+                    <input
+                      type="number"
+                      min="0"
+                      value={budget.meta}
+                      onChange={(event) =>
+                        setBudget((current) => ({
+                          ...current,
+                          meta: Number(event.target.value),
+                        }))
+                      }
+                    />
+                  </label>
 
-        <input
-          type="number"
-          min="0"
-          value={budget.tiktok}
-          onChange={(event) =>
-            setBudget((current) => ({
-              ...current,
-              tiktok: Number(event.target.value),
-            }))
-          }
-        />
-      </label>
-    </div>
-  )}
+                  <label className="field">
+                    <span>TikTok budget (PEN)</span>
 
-  {platforms.meta && !platforms.tiktok && (
-    <p className="allocationText">
-      Meta will receive the full campaign budget.
-    </p>
-  )}
+                    <input
+                      type="number"
+                      min="0"
+                      value={budget.tiktok}
+                      onChange={(event) =>
+                        setBudget((current) => ({
+                          ...current,
+                          tiktok: Number(event.target.value),
+                        }))
+                      }
+                    />
+                  </label>
+                </div>
+              )}
 
-  {!platforms.meta && platforms.tiktok && (
-    <p className="allocationText">
-      TikTok will receive the full campaign budget.
-    </p>
-  )}
-</div>
-    <div className="campaignActions">
-      <button
-        type="button"
-        className="secondaryButton stepBackButton"
-        onClick={() => setStep(2)}
-      >
-        Back
-      </button>
+              {platforms.meta && !platforms.tiktok && (
+                <p className="allocationText">
+                  Meta will receive the full campaign budget.
+                </p>
+              )}
 
-      <button
-  type="button"
-  className="continueButton"
-  disabled={!budgetIsValid}
-  onClick={() => setStep(4)}
->
-  Continue
-</button>
-    </div>
-  </>
-)}
+              {!platforms.meta && platforms.tiktok && (
+                <p className="allocationText">
+                  TikTok will receive the full campaign budget.
+                </p>
+              )}
+            </div>
+            <div className="campaignActions">
+              <button
+                type="button"
+                className="secondaryButton stepBackButton"
+                onClick={() => setStep(2)}
+              >
+                Back
+              </button>
 
-{step === 4 && (
-  <>
-    <p className="eyebrow">
-      CREATE CAMPAIGN
-    </p>
-
-    <h1 className="campaignTitle">
-      Create your ad
-    </h1>
-
-    <p className="campaignSubtitle">
-      Customize the message people will see.
-    </p>
-
-    {selectedProduct && (
-      <div className="creativePreview">
-        {selectedProduct.imageUrl && (
-          <img
-            src={selectedProduct.imageUrl}
-            alt={selectedProduct.title}
-            className="creativeImage"
-          />
+              <button
+                type="button"
+                className="continueButton"
+                disabled={!budgetIsValid}
+                onClick={() => setStep(4)}
+              >
+                Continue
+              </button>
+            </div>
+          </>
         )}
 
-        <div className="creativePreviewContent">
-          <span className="creativeLabel">
-            AD PREVIEW
-          </span>
+        {step === 4 && (
+          <>
+            <p className="eyebrow">
+              CREATE CAMPAIGN
+            </p>
 
-          <strong>
-            {creative.headline || selectedProduct.title}
-          </strong>
+            <h1 className="campaignTitle">
+              Create your ad
+            </h1>
 
-          <p>
-            {creative.primaryText}
-          </p>
-        </div>
-      </div>
-    )}
+            <p className="campaignSubtitle">
+              Customize the message people will see.
+            </p>
 
-    <div className="formSection">
-      <label className="field">
-        <span>Primary text</span>
+            {selectedProduct && (
+              <div className="creativePreview">
+                {selectedProduct.imageUrl && (
+                  <img
+                    src={selectedProduct.imageUrl}
+                    alt={selectedProduct.title}
+                    className="creativeImage"
+                  />
+                )}
 
-        <textarea
-          rows="4"
-          value={creative.primaryText}
-          onChange={(event) =>
-            setCreative((current) => ({
-              ...current,
-              primaryText: event.target.value,
-            }))
-          }
-        />
-      </label>
+                <div className="creativePreviewContent">
+                  <span className="creativeLabel">
+                    AD PREVIEW
+                  </span>
 
-      <label className="field">
-        <span>Headline</span>
+                  <strong>
+                    {creative.headline || selectedProduct.title}
+                  </strong>
 
-        <input
-          type="text"
-          value={creative.headline}
-          onChange={(event) =>
-            setCreative((current) => ({
-              ...current,
-              headline: event.target.value,
-            }))
-          }
-        />
-      </label>
+                  <p>
+                    {creative.primaryText}
+                  </p>
+                </div>
+              </div>
+            )}
 
-      <label className="field">
-        <span>Destination URL</span>
+            <div className="formSection">
+              <label className="field">
+                <span>Primary text</span>
 
-        <input
-          type="url"
-          placeholder="https://your-store.com/products/..."
-          value={creative.destinationUrl}
-          onChange={(event) =>
-            setCreative((current) => ({
-              ...current,
-              destinationUrl: event.target.value,
-            }))
-          }
-        />
-      </label>
-    </div>
+                <textarea
+                  rows="4"
+                  value={creative.primaryText}
+                  onChange={(event) =>
+                    setCreative((current) => ({
+                      ...current,
+                      primaryText: event.target.value,
+                    }))
+                  }
+                />
+              </label>
 
-    <div className="campaignActions">
-      <button
-        type="button"
-        className="secondaryButton stepBackButton"
-        onClick={() => setStep(3)}
-      >
-        Back
-      </button>
+              <label className="field">
+                <span>Headline</span>
 
-      <button
-        type="button"
-        className="continueButton"
-        onClick={() => setStep(5)}
-      >
-        Continue
-      </button>
-    </div>
-  </>
-)}
+                <input
+                  type="text"
+                  value={creative.headline}
+                  onChange={(event) =>
+                    setCreative((current) => ({
+                      ...current,
+                      headline: event.target.value,
+                    }))
+                  }
+                />
+              </label>
 
-{step === 5 && (
-  <>
-    <p className="eyebrow">
-      CREATE CAMPAIGN
-    </p>
+              <label className="field">
+                <span>Destination URL</span>
 
-    <h1 className="campaignTitle">
-      Review your campaign
-    </h1>
+                <input
+                  type="url"
+                  placeholder="https://your-store.com/products/..."
+                  value={creative.destinationUrl}
+                  onChange={(event) =>
+                    setCreative((current) => ({
+                      ...current,
+                      destinationUrl: event.target.value,
+                    }))
+                  }
+                />
+              </label>
+            </div>
 
-    <p className="campaignSubtitle">
-      Check everything before Relay generates the platform plans.
-    </p>
+            <div className="campaignActions">
+              <button
+                type="button"
+                className="secondaryButton stepBackButton"
+                onClick={() => setStep(3)}
+              >
+                Back
+              </button>
 
-    <div className="reviewSection">
-      <h2>Product</h2>
+              <button
+                type="button"
+                className="continueButton"
+                onClick={() => setStep(5)}
+              >
+                Continue
+              </button>
+            </div>
+          </>
+        )}
 
-      {selectedProduct && (
-        <div className="reviewRow">
-          <span>{selectedProduct.title}</span>
-          <strong>
-            {selectedProduct.currency} {selectedProduct.price}
-          </strong>
-        </div>
-      )}
-    </div>
+        {step === 5 && (
+          <>
+            <p className="eyebrow">
+              CREATE CAMPAIGN
+            </p>
 
-    <div className="reviewSection">
-      <h2>Platforms</h2>
+            <h1 className="campaignTitle">
+              Review your campaign
+            </h1>
 
-      <div className="reviewRow">
-        <span>Meta</span>
-        <strong>
-          {platforms.meta ? "Enabled" : "Disabled"}
-        </strong>
-      </div>
+            <p className="campaignSubtitle">
+              Check everything before Relay generates the platform plans.
+            </p>
 
-      <div className="reviewRow">
-        <span>TikTok</span>
-        <strong>
-          {platforms.tiktok ? "Enabled" : "Disabled"}
-        </strong>
-      </div>
-    </div>
+            <div className="reviewSection">
+              <h2>Product</h2>
 
-    <div className="reviewSection">
-      <h2>Audience</h2>
+              {selectedProduct && (
+                <div className="reviewRow">
+                  <span>{selectedProduct.title}</span>
+                  <strong>
+                    {selectedProduct.currency} {selectedProduct.price}
+                  </strong>
+                </div>
+              )}
+            </div>
 
-      <div className="reviewRow">
-        <span>Country</span>
-        <strong>{audience.country}</strong>
-      </div>
+            <div className="reviewSection">
+              <h2>Platforms</h2>
 
-      <div className="reviewRow">
-        <span>Age</span>
-        <strong>
-          {audience.ageMin}–{audience.ageMax}
-        </strong>
-      </div>
+              <div className="reviewRow">
+                <span>Meta</span>
+                <strong>
+                  {platforms.meta ? "Enabled" : "Disabled"}
+                </strong>
+              </div>
 
-      <div className="reviewRow">
-        <span>Gender</span>
-        <strong>{audience.gender}</strong>
-      </div>
-    </div>
+              <div className="reviewRow">
+                <span>TikTok</span>
+                <strong>
+                  {platforms.tiktok ? "Enabled" : "Disabled"}
+                </strong>
+              </div>
+            </div>
 
-    <div className="reviewSection">
-      <h2>Budget</h2>
+            <div className="reviewSection">
+              <h2>Audience</h2>
 
-      <div className="reviewRow">
-        <span>Total</span>
-        <strong>
-          PEN {budget.total}
-        </strong>
-      </div>
+              <div className="reviewRow">
+                <span>Country</span>
+                <strong>{audience.country}</strong>
+              </div>
 
-      <div className="reviewRow">
-        <span>Duration</span>
-        <strong>
-          {budget.durationDays} days
-        </strong>
-      </div>
+              <div className="reviewRow">
+                <span>Age</span>
+                <strong>
+                  {audience.ageMin}–{audience.ageMax}
+                </strong>
+              </div>
 
-      {platforms.meta && (
-        <div className="reviewRow">
-          <span>Meta</span>
-          <strong>
-            PEN {expectedMetaBudget}
-          </strong>
-        </div>
-      )}
+              <div className="reviewRow">
+                <span>Gender</span>
+                <strong>{audience.gender}</strong>
+              </div>
+            </div>
 
-      {platforms.tiktok && (
-        <div className="reviewRow">
-          <span>TikTok</span>
-          <strong>
-            PEN {expectedTikTokBudget}
-          </strong>
-        </div>
-      )}
-    </div>
+            <div className="reviewSection">
+              <h2>Budget</h2>
 
-    <div className="reviewSection">
-      <h2>Creative</h2>
+              <div className="reviewRow">
+                <span>Total</span>
+                <strong>
+                  PEN {budget.total}
+                </strong>
+              </div>
 
-      <div className="reviewRow">
-        <span>Headline</span>
-        <strong>
-          {creative.headline}
-        </strong>
-      </div>
+              <div className="reviewRow">
+                <span>Duration</span>
+                <strong>
+                  {budget.durationDays} days
+                </strong>
+              </div>
 
-      <div className="reviewRow">
-        <span>Primary text</span>
-        <strong>
-          {creative.primaryText}
-        </strong>
-      </div>
+              {platforms.meta && (
+                <div className="reviewRow">
+                  <span>Meta</span>
+                  <strong>
+                    PEN {expectedMetaBudget}
+                  </strong>
+                </div>
+              )}
 
-      <div className="reviewRow reviewUrlRow">
-        <span>Destination</span>
-        <strong>
-          {creative.destinationUrl}
-        </strong>
-      </div>
-    </div>
+              {platforms.tiktok && (
+                <div className="reviewRow">
+                  <span>TikTok</span>
+                  <strong>
+                    PEN {expectedTikTokBudget}
+                  </strong>
+                </div>
+              )}
+            </div>
 
-    <div className="reviewSection">
-      <h2>Relay configuration</h2>
+            <div className="reviewSection">
+              <h2>Creative</h2>
 
-      <p className="reviewDescription">
-        Relay will translate this campaign into the native
-        configuration required by each selected ad platform.
-      </p>
-    </div>
+              <div className="reviewRow">
+                <span>Headline</span>
+                <strong>
+                  {creative.headline}
+                </strong>
+              </div>
 
+              <div className="reviewRow">
+                <span>Primary text</span>
+                <strong>
+                  {creative.primaryText}
+                </strong>
+              </div>
 
-      {planError && (
-  <p className="errorText">
-    {planError}
-  </p>
-)}
+              <div className="reviewRow reviewUrlRow">
+                <span>Destination</span>
+                <strong>
+                  {creative.destinationUrl}
+                </strong>
+              </div>
+            </div>
 
-{planResult && (
-  <div className="reviewSection">
-    <h2>Campaign plan generated</h2>
+            <div className="reviewSection">
+              <h2>Relay configuration</h2>
 
-    <p className="reviewDescription">
-      Relay successfully translated your Universal Campaign into
-      platform-specific plans.
-    </p>
-
-  <div className="generatedPlans">
-  {planResult.plans.meta && (
-    <div className="generatedPlanCard">
-      <div className="generatedPlanHeader">
-        <div>
-          <span className="generatedPlanLabel">META</span>
-          <h3>Meta campaign plan</h3>
-        </div>
-
-        <strong>
-          {planResult.plans.meta.budget.currency}{" "}
-          {planResult.plans.meta.budget.allocated}
-        </strong>
-      </div>
-
-      <div className="generatedPlanRow">
-        <span>Objective</span>
-        <strong>{planResult.plans.meta.campaign.objective}</strong>
-      </div>
-
-      <div className="generatedPlanRow">
-        <span>Audience</span>
-        <strong>
-          {planResult.plans.meta.audience.countries.join(", ")} ·{" "}
-          {planResult.plans.meta.audience.ageMin}–
-          {planResult.plans.meta.audience.ageMax} ·{" "}
-          {planResult.plans.meta.audience.gender}
-        </strong>
-      </div>
-
-      <div className="generatedPlanRow">
-        <span>Placements</span>
-        <strong>
-          {planResult.plans.meta.placements.join(" + ")}
-        </strong>
-      </div>
-
-      <div className="generatedPlanRow">
-        <span>Creative</span>
-        <strong>{planResult.plans.meta.creative.headline}</strong>
-      </div>
-    </div>
-  )}
-
-  {planResult.plans.tiktok && (
-    <div className="generatedPlanCard">
-      <div className="generatedPlanHeader">
-        <div>
-          <span className="generatedPlanLabel">TIKTOK</span>
-          <h3>TikTok campaign plan</h3>
-        </div>
-
-        <strong>
-          {planResult.plans.tiktok.budget.currency}{" "}
-          {planResult.plans.tiktok.budget.allocated}
-        </strong>
-      </div>
-
-      <div className="generatedPlanRow">
-        <span>Objective</span>
-        <strong>{planResult.plans.tiktok.campaign.objective}</strong>
-      </div>
-
-      <div className="generatedPlanRow">
-        <span>Audience</span>
-        <strong>
-          {planResult.plans.tiktok.audience.countries.join(", ")} ·{" "}
-          {planResult.plans.tiktok.audience.ageMin}–
-          {planResult.plans.tiktok.audience.ageMax} ·{" "}
-          {planResult.plans.tiktok.audience.gender}
-        </strong>
-      </div>
-
-      <div className="generatedPlanRow">
-        <span>Creative</span>
-        <strong>{planResult.plans.tiktok.creative.headline}</strong>
-      </div>
-    </div>
-  )}
-</div>
-
-{planResult.plans.meta && (
-  <div className="sandboxAction">
-    <button
-      type="button"
-      className="continueButton"
-      onClick={createMetaSandboxCampaign}
-      disabled={
-        creatingMetaCampaign ||
-        !!metaCampaignResult
-      }
-    >
-      {creatingMetaCampaign
-        ? "Creating Meta sandbox campaign..."
-        : metaCampaignResult
-          ? "Meta sandbox campaign created"
-          : "Create Meta sandbox campaign"}
-    </button>
-
-    <p className="sandboxNote">
-      Creates a PAUSED campaign in the Relay Meta sandbox.
-      No real ad spend.
-    </p>
-  </div>
-)}
-
-{metaCampaignError && (
-  <p className="errorText">
-    {metaCampaignError}
-  </p>
-)}
-
-{metaCampaignResult && (
-  <div className="reviewSection">
-    <h2>Meta sandbox campaign created</h2>
-
-    <div className="reviewRow">
-      <span>ID</span>
-      <strong>{metaCampaignResult.id}</strong>
-    </div>
-
-    <div className="reviewRow">
-      <span>Name</span>
-      <strong>{metaCampaignResult.name}</strong>
-    </div>
-
-    <div className="reviewRow">
-      <span>Status</span>
-      <strong>{metaCampaignResult.status}</strong>
-    </div>
-
-    <div className="reviewRow">
-      <span>Objective</span>
-      <strong>{metaCampaignResult.objective}</strong>
-    </div>
-  </div>
-)}
-
-  </div>
-)}
+              <p className="reviewDescription">
+                Relay will translate this campaign into the native
+                configuration required by each selected ad platform.
+              </p>
+            </div>
 
 
-    <div className="campaignActions">
-      <button
-        type="button"
-        className="secondaryButton stepBackButton"
-        onClick={() => setStep(4)}
-      >
-        Back
-      </button>
+            {planError && (
+              <p className="errorText">
+                {planError}
+              </p>
+            )}
 
-      <button
-  type="button"
-  className="continueButton"
-  onClick={generateCampaignPlan}
-  disabled={generatingPlan || !!planResult}
->
-  {generatingPlan
-    ? "Generating..."
-    : planResult
-      ? "Campaign plan generated"
-      : "Generate campaign plan"}
-</button>
-    </div>
-  </>
-)}
+            {planResult && (
+              <div className="reviewSection">
+                <h2>Campaign plan generated</h2>
+
+                <p className="reviewDescription">
+                  Relay successfully translated your Universal Campaign into
+                  platform-specific plans.
+                </p>
+
+                <div className="generatedPlans">
+                  {planResult.plans.meta && (
+                    <div className="generatedPlanCard">
+                      <div className="generatedPlanHeader">
+                        <div>
+                          <span className="generatedPlanLabel">META</span>
+                          <h3>Meta campaign plan</h3>
+                        </div>
+
+                        <strong>
+                          {planResult.plans.meta.budget.currency}{" "}
+                          {planResult.plans.meta.budget.allocated}
+                        </strong>
+                      </div>
+
+                      <div className="generatedPlanRow">
+                        <span>Objective</span>
+                        <strong>{planResult.plans.meta.campaign.objective}</strong>
+                      </div>
+
+                      <div className="generatedPlanRow">
+                        <span>Audience</span>
+                        <strong>
+                          {planResult.plans.meta.audience.countries.join(", ")} ·{" "}
+                          {planResult.plans.meta.audience.ageMin}–
+                          {planResult.plans.meta.audience.ageMax} ·{" "}
+                          {planResult.plans.meta.audience.gender}
+                        </strong>
+                      </div>
+
+                      <div className="generatedPlanRow">
+                        <span>Placements</span>
+                        <strong>
+                          {planResult.plans.meta.placements.join(" + ")}
+                        </strong>
+                      </div>
+
+                      <div className="generatedPlanRow">
+                        <span>Creative</span>
+                        <strong>{planResult.plans.meta.creative.headline}</strong>
+                      </div>
+                    </div>
+                  )}
+
+                  {planResult.plans.tiktok && (
+                    <div className="generatedPlanCard">
+                      <div className="generatedPlanHeader">
+                        <div>
+                          <span className="generatedPlanLabel">TIKTOK</span>
+                          <h3>TikTok campaign plan</h3>
+                        </div>
+
+                        <strong>
+                          {planResult.plans.tiktok.budget.currency}{" "}
+                          {planResult.plans.tiktok.budget.allocated}
+                        </strong>
+                      </div>
+
+                      <div className="generatedPlanRow">
+                        <span>Objective</span>
+                        <strong>{planResult.plans.tiktok.campaign.objective}</strong>
+                      </div>
+
+                      <div className="generatedPlanRow">
+                        <span>Audience</span>
+                        <strong>
+                          {planResult.plans.tiktok.audience.countries.join(", ")} ·{" "}
+                          {planResult.plans.tiktok.audience.ageMin}–
+                          {planResult.plans.tiktok.audience.ageMax} ·{" "}
+                          {planResult.plans.tiktok.audience.gender}
+                        </strong>
+                      </div>
+
+                      <div className="generatedPlanRow">
+                        <span>Creative</span>
+                        <strong>{planResult.plans.tiktok.creative.headline}</strong>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {planResult.plans.meta && (
+                  <div className="sandboxAction">
+                    <button
+                      type="button"
+                      className="continueButton"
+                      onClick={createMetaSandboxCampaign}
+                      disabled={
+                        creatingMetaCampaign ||
+                        !!metaCampaignResult
+                      }
+                    >
+                      {creatingMetaCampaign
+                        ? "Creating Meta sandbox campaign..."
+                        : metaCampaignResult
+                          ? "Meta sandbox campaign created"
+                          : "Create Meta sandbox campaign"}
+                    </button>
+
+                    <p className="sandboxNote">
+                      Creates a PAUSED campaign in the Relay Meta sandbox.
+                      No real ad spend.
+                    </p>
+                  </div>
+                )}
+
+                {metaCampaignError && (
+                  <p className="errorText">
+                    {metaCampaignError}
+                  </p>
+                )}
+
+                {metaCampaignResult && (
+                  <div className="reviewSection">
+                    <h2>Meta sandbox campaign created</h2>
+
+                    <div className="reviewRow">
+                      <span>ID</span>
+                      <strong>{metaCampaignResult.id}</strong>
+                    </div>
+
+                    <div className="reviewRow">
+                      <span>Name</span>
+                      <strong>{metaCampaignResult.name}</strong>
+                    </div>
+
+                    <div className="reviewRow">
+                      <span>Status</span>
+                      <strong>{metaCampaignResult.status}</strong>
+                    </div>
+
+                    <div className="reviewRow">
+                      <span>Objective</span>
+                      <strong>{metaCampaignResult.objective}</strong>
+                    </div>
+                  </div>
+                )}
+
+              </div>
+            )}
+
+
+            <div className="campaignActions">
+              <button
+                type="button"
+                className="secondaryButton stepBackButton"
+                onClick={() => setStep(4)}
+              >
+                Back
+              </button>
+
+              <button
+                type="button"
+                className="continueButton"
+                onClick={generateCampaignPlan}
+                disabled={generatingPlan || !!planResult}
+              >
+                {generatingPlan
+                  ? "Generating..."
+                  : planResult
+                    ? "Campaign plan generated"
+                    : "Generate campaign plan"}
+              </button>
+            </div>
+          </>
+        )}
       </section>
     </main>
   );
