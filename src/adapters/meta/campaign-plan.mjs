@@ -28,7 +28,7 @@ export function buildMetaCampaignPlan(campaign) {
 
     campaign: {
       name: campaign.name,
-      objective: "SALES",
+      objective: "OUTCOME_SALES",
     },
 
     audience: {
