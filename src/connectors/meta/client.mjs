@@ -1,6 +1,16 @@
 const META_API_VERSION = "v26.0";
 const META_GRAPH_URL = `https://graph.facebook.com/${META_API_VERSION}`;
 
+function getAdAccountNodeId(adAccountId) {
+  if (!adAccountId) {
+    throw new Error("Missing Meta ad account ID");
+  }
+
+  return adAccountId.startsWith("act_")
+    ? adAccountId
+    : `act_${adAccountId}`;
+}
+
 export function createMetaClient({
   adAccountId,
   accessToken,
@@ -66,6 +76,29 @@ export function createMetaClient({
     if (!response.ok) {
       throw new Error(
         `Meta get business pages failed: ${JSON.stringify(result)}`
+      );
+    }
+
+    return result.data ?? [];
+  }
+
+  async function getAdAccountPixels(accountId) {
+    const adAccountNodeId = getAdAccountNodeId(accountId);
+
+    const params = new URLSearchParams({
+      fields: "id,name",
+      access_token: accessToken,
+    });
+
+    const response = await fetch(
+      `${META_GRAPH_URL}/${adAccountNodeId}/adspixels?${params}`
+    );
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        `Meta get ad account pixels failed: ${JSON.stringify(result)}`
       );
     }
 
@@ -245,7 +278,8 @@ export function createMetaClient({
     getBusinesses,
     getBusinessAdAccounts,
     getBusinessPages,
-
+    getAdAccountPixels,
+    
     createCampaign,
     getCampaign,
     createAdSet,

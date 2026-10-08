@@ -36,6 +36,26 @@ export async function loadMetaConnection() {
   }
 }
 
+export async function saveMetaPixelSelection(pixel) {
+  const connection = await loadMetaConnection();
+
+  if (!connection) {
+    throw new Error("Meta is not connected");
+  }
+
+  const updatedConnection = {
+    ...connection,
+    salesSetup: {
+      ...(connection.salesSetup ?? {}),
+      pixel,
+    },
+  };
+
+  await saveMetaConnection(updatedConnection);
+
+  return updatedConnection;
+}
+
 export async function deleteMetaConnection() {
   try {
     await fs.unlink(CONNECTION_FILE);
