@@ -295,6 +295,54 @@ export function createMetaClient({
     return result;
   }
 
+  async function createAd({
+    name,
+    adSetId,
+    creativeId,
+    status = "PAUSED",
+  }) {
+    if (!adAccountId) {
+      throw new Error("Missing Meta ad account ID");
+    }
+
+    if (!adSetId) {
+      throw new Error("Missing Meta ad set ID");
+    }
+
+    if (!creativeId) {
+      throw new Error("Missing Meta creative ID");
+    }
+
+    const response = await fetch(
+      `${META_GRAPH_URL}/${getAdAccountNodeId(adAccountId)}/ads`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: new URLSearchParams({
+          name,
+          adset_id: adSetId,
+          creative: JSON.stringify({
+            creative_id: creativeId,
+          }),
+          status,
+          access_token: accessToken,
+        }),
+      }
+    );
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        `Meta create ad failed: ${JSON.stringify(result)}`
+      );
+    }
+
+    return result;
+  }
+
   return {
     getBusinesses,
     getBusinessAdAccounts,
@@ -305,5 +353,6 @@ export function createMetaClient({
     getCampaign,
     createAdSet,
     createAdCreative,
+    createAd,
   };
 }
