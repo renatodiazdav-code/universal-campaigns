@@ -12,7 +12,7 @@ export default function NewCampaignPage() {
     meta: true,
     facebook: true,
     instagram: true,
-    tiktok: true,
+    tiktok: false,
   });
 
   const [audience, setAudience] = useState({
@@ -45,6 +45,9 @@ export default function NewCampaignPage() {
   const [metaCampaignError, setMetaCampaignError] = useState("");
   const [metaSetup, setMetaSetup] = useState(null);
   const [metaSetupLoading, setMetaSetupLoading] = useState(true);
+  const [launchingCampaign, setLaunchingCampaign] = useState(false);
+  const [launchResult, setLaunchResult] = useState(null);
+  const [launchError, setLaunchError] = useState("");
 
   useEffect(() => {
     async function loadMetaSetup() {
@@ -114,14 +117,19 @@ export default function NewCampaignPage() {
   }, [selectedProduct]);
 
   const expectedMetaBudget =
-    platforms.meta && !platforms.tiktok
-      ? budget.total
-      : budget.meta;
+    !platforms.meta
+      ? 0
+      : !platforms.tiktok
+        ? budget.total
+        : budget.meta;
 
   const expectedTikTokBudget =
-    platforms.tiktok && !platforms.meta
-      ? budget.total
-      : budget.tiktok;
+    !platforms.tiktok
+      ? 0
+      : !platforms.meta
+        ? budget.total
+        : budget.tiktok;
+
 
   const budgetIsValid =
     budget.total > 0 &&
@@ -209,6 +217,95 @@ export default function NewCampaignPage() {
       setPlanError(error.message);
     } finally {
       setGeneratingPlan(false);
+    }
+  }
+
+  async function launchCampaign() {
+    if (!selectedProduct) {
+      return;
+    }
+
+    setLaunchingCampaign(true);
+    setLaunchError("");
+    setLaunchResult(null);
+
+    try {
+      const campaignInput = {
+        name: `${selectedProduct.title} Campaign`,
+        goal: "SALES",
+
+        product: {
+          source: "SHOPIFY",
+          id: selectedProduct.id,
+          title: selectedProduct.title,
+          price: Number(selectedProduct.price),
+          currency: selectedProduct.currency,
+          imageUrl: selectedProduct.imageUrl,
+          destinationUrl: selectedProduct.destinationUrl,
+        },
+
+        audience: {
+          countries: [audience.country],
+          ageMin: audience.ageMin,
+          ageMax: audience.ageMax,
+          gender: audience.gender,
+        },
+
+        budget: {
+          total: budget.total,
+          currency: selectedProduct.currency,
+          durationDays: budget.durationDays,
+
+          allocation: {
+            mode: "MANUAL",
+            meta: platforms.meta ? expectedMetaBudget : 0,
+            tiktok: platforms.tiktok ? expectedTikTokBudget : 0,
+          },
+        },
+
+        platforms: {
+          meta: {
+            enabled: platforms.meta,
+            facebook: platforms.meta && platforms.facebook,
+            instagram: platforms.meta && platforms.instagram,
+          },
+
+          tiktok: {
+            enabled: platforms.tiktok,
+          },
+        },
+
+        creative: {
+          type: "IMAGE",
+          primaryText: creative.primaryText,
+          headline: creative.headline,
+          destinationUrl: creative.destinationUrl,
+        },
+      };
+
+      const response = await fetch("/api/campaigns/launch", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(campaignInput),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data?.platforms?.meta?.error ||
+          data.error ||
+          "Could not launch campaign"
+        );
+      }
+
+      setLaunchResult(data);
+    } catch (error) {
+      setLaunchError(error.message);
+    } finally {
+      setLaunchingCampaign(false);
     }
   }
 
@@ -1067,6 +1164,55 @@ export default function NewCampaignPage() {
               </div>
             )}
 
+            {launchError && (
+              <p className="errorText">
+                {launchError}
+              </p>
+            )}
+
+            {launchResult && (
+              <div className="reviewSection">
+                <h2>Campaign created</h2>
+
+                <p className="reviewDescription">
+                  Relay successfully created your Meta campaign.
+                  Everything remains paused, so no ad spend is active.
+                </p>
+
+                <div className="reviewRow">
+                  <span>Campaign</span>
+                  <strong>
+                    {launchResult.platforms.meta.campaign.id}
+                  </strong>
+                </div>
+
+                <div className="reviewRow">
+                  <span>Ad set</span>
+                  <strong>
+                    {launchResult.platforms.meta.adSet.id}
+                  </strong>
+                </div>
+
+                <div className="reviewRow">
+                  <span>Creative</span>
+                  <strong>
+                    {launchResult.platforms.meta.creative.id}
+                  </strong>
+                </div>
+
+                <div className="reviewRow">
+                  <span>Ad</span>
+                  <strong>
+                    {launchResult.platforms.meta.ad.id}
+                  </strong>
+                </div>
+
+                <div className="reviewRow">
+                  <span>Status</span>
+                  <strong>PAUSED</strong>
+                </div>
+              </div>
+            )}
 
             <div className="campaignActions">
               <button
@@ -1080,14 +1226,19 @@ export default function NewCampaignPage() {
               <button
                 type="button"
                 className="continueButton"
-                onClick={generateCampaignPlan}
-                disabled={generatingPlan || !!planResult}
+                onClick={launchCampaign}
+                disabled={
+                  launchingCampaign ||
+                  !!launchResult ||
+                  !platforms.meta ||
+                  platforms.tiktok
+                }
               >
-                {generatingPlan
-                  ? "Generating..."
-                  : planResult
-                    ? "Campaign plan generated"
-                    : "Generate campaign plan"}
+                {launchingCampaign
+                  ? "Launching..."
+                  : launchResult
+                    ? "Campaign created"
+                    : "Launch ad"}
               </button>
             </div>
           </>
