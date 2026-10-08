@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-
+import { saveMetaConnection } from "../../../../../src/application/meta-connection-store.mjs";
 import { createMetaClient } from "../../../../../src/connectors/meta/client.mjs";
 import { discoverMetaSetup } from "../../../../../src/application/discover-meta-setup.mjs";
 
@@ -114,6 +114,12 @@ export async function GET(request) {
     });
 
     const setup = await discoverMetaSetup(meta);
+
+    await saveMetaConnection({
+  accessToken,
+  setup,
+  connectedAt: new Date().toISOString(),
+});
 
     const response = NextResponse.json({
       status: "CONNECTED",

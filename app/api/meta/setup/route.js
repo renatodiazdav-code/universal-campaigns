@@ -1,15 +1,15 @@
 import { createMetaClient } from "../../../../src/connectors/meta/client.mjs";
 import { discoverMetaSetup } from "../../../../src/application/discover-meta-setup.mjs";
+import { loadMetaConnection } from "../../../../src/application/meta-connection-store.mjs";
 
 export async function GET() {
   try {
-    const accessToken = process.env.META_ACCESS_TOKEN;
+    const connection = await loadMetaConnection();
 
-    if (!accessToken) {
+    if (!connection?.accessToken) {
       return Response.json(
         {
           status: "NOT_CONNECTED",
-          error: "Meta access token is missing",
         },
         {
           status: 401,
@@ -18,7 +18,7 @@ export async function GET() {
     }
 
     const meta = createMetaClient({
-      accessToken,
+      accessToken: connection.accessToken,
     });
 
     const setup = await discoverMetaSetup(meta);
