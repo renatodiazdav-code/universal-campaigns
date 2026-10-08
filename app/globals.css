@@ -496,3 +496,13 @@ button {
 .generatedPlanRow strong {
   text-align: right;
 }
+
+.sandboxAction {
+  margin-top: 24px;
+}
+
+.sandboxNote {
+  margin: 10px 0 0;
+  color: #777777;
+  font-size: 13px;
+}

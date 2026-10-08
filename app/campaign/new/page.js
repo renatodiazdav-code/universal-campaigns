@@ -40,6 +40,9 @@ const [creative, setCreative] = useState({
   const [generatingPlan, setGeneratingPlan] = useState(false);
   const [planResult, setPlanResult] = useState(null);
   const [planError, setPlanError] = useState("");
+  const [creatingMetaCampaign, setCreatingMetaCampaign] = useState(false);
+  const [metaCampaignResult, setMetaCampaignResult] = useState(null);
+  const [metaCampaignError, setMetaCampaignError] = useState("");
 
   useEffect(() => {
     async function loadProducts() {
@@ -175,6 +178,41 @@ const budgetIsValid =
     setPlanError(error.message);
   } finally {
     setGeneratingPlan(false);
+  }
+}
+
+async function createMetaSandboxCampaign() {
+  if (!planResult?.plans?.meta) {
+    return;
+  }
+
+  setCreatingMetaCampaign(true);
+  setMetaCampaignError("");
+
+  try {
+    const response = await fetch("/api/meta/sandbox-campaign", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        metaPlan: planResult.plans.meta,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        data.error || "Could not create Meta sandbox campaign"
+      );
+    }
+
+    setMetaCampaignResult(data.campaign);
+  } catch (error) {
+    setMetaCampaignError(error.message);
+  } finally {
+    setCreatingMetaCampaign(false);
   }
 }
 
@@ -818,7 +856,7 @@ const budgetIsValid =
       platform-specific plans.
     </p>
 
-    <div className="generatedPlans">
+  <div className="generatedPlans">
   {planResult.plans.meta && (
     <div className="generatedPlanCard">
       <div className="generatedPlanHeader">
@@ -898,6 +936,64 @@ const budgetIsValid =
     </div>
   )}
 </div>
+
+{planResult.plans.meta && (
+  <div className="sandboxAction">
+    <button
+      type="button"
+      className="continueButton"
+      onClick={createMetaSandboxCampaign}
+      disabled={
+        creatingMetaCampaign ||
+        !!metaCampaignResult
+      }
+    >
+      {creatingMetaCampaign
+        ? "Creating Meta sandbox campaign..."
+        : metaCampaignResult
+          ? "Meta sandbox campaign created"
+          : "Create Meta sandbox campaign"}
+    </button>
+
+    <p className="sandboxNote">
+      Creates a PAUSED campaign in the Relay Meta sandbox.
+      No real ad spend.
+    </p>
+  </div>
+)}
+
+{metaCampaignError && (
+  <p className="errorText">
+    {metaCampaignError}
+  </p>
+)}
+
+{metaCampaignResult && (
+  <div className="reviewSection">
+    <h2>Meta sandbox campaign created</h2>
+
+    <div className="reviewRow">
+      <span>ID</span>
+      <strong>{metaCampaignResult.id}</strong>
+    </div>
+
+    <div className="reviewRow">
+      <span>Name</span>
+      <strong>{metaCampaignResult.name}</strong>
+    </div>
+
+    <div className="reviewRow">
+      <span>Status</span>
+      <strong>{metaCampaignResult.status}</strong>
+    </div>
+
+    <div className="reviewRow">
+      <span>Objective</span>
+      <strong>{metaCampaignResult.objective}</strong>
+    </div>
+  </div>
+)}
+
   </div>
 )}
 
