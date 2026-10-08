@@ -818,9 +818,86 @@ const budgetIsValid =
       platform-specific plans.
     </p>
 
-    <pre style={{ overflowX: "auto", marginTop: "16px" }}>
-      {JSON.stringify(planResult.plans, null, 2)}
-    </pre>
+    <div className="generatedPlans">
+  {planResult.plans.meta && (
+    <div className="generatedPlanCard">
+      <div className="generatedPlanHeader">
+        <div>
+          <span className="generatedPlanLabel">META</span>
+          <h3>Meta campaign plan</h3>
+        </div>
+
+        <strong>
+          {planResult.plans.meta.budget.currency}{" "}
+          {planResult.plans.meta.budget.allocated}
+        </strong>
+      </div>
+
+      <div className="generatedPlanRow">
+        <span>Objective</span>
+        <strong>{planResult.plans.meta.campaign.objective}</strong>
+      </div>
+
+      <div className="generatedPlanRow">
+        <span>Audience</span>
+        <strong>
+          {planResult.plans.meta.audience.countries.join(", ")} ·{" "}
+          {planResult.plans.meta.audience.ageMin}–
+          {planResult.plans.meta.audience.ageMax} ·{" "}
+          {planResult.plans.meta.audience.gender}
+        </strong>
+      </div>
+
+      <div className="generatedPlanRow">
+        <span>Placements</span>
+        <strong>
+          {planResult.plans.meta.placements.join(" + ")}
+        </strong>
+      </div>
+
+      <div className="generatedPlanRow">
+        <span>Creative</span>
+        <strong>{planResult.plans.meta.creative.headline}</strong>
+      </div>
+    </div>
+  )}
+
+  {planResult.plans.tiktok && (
+    <div className="generatedPlanCard">
+      <div className="generatedPlanHeader">
+        <div>
+          <span className="generatedPlanLabel">TIKTOK</span>
+          <h3>TikTok campaign plan</h3>
+        </div>
+
+        <strong>
+          {planResult.plans.tiktok.budget.currency}{" "}
+          {planResult.plans.tiktok.budget.allocated}
+        </strong>
+      </div>
+
+      <div className="generatedPlanRow">
+        <span>Objective</span>
+        <strong>{planResult.plans.tiktok.campaign.objective}</strong>
+      </div>
+
+      <div className="generatedPlanRow">
+        <span>Audience</span>
+        <strong>
+          {planResult.plans.tiktok.audience.countries.join(", ")} ·{" "}
+          {planResult.plans.tiktok.audience.ageMin}–
+          {planResult.plans.tiktok.audience.ageMax} ·{" "}
+          {planResult.plans.tiktok.audience.gender}
+        </strong>
+      </div>
+
+      <div className="generatedPlanRow">
+        <span>Creative</span>
+        <strong>{planResult.plans.tiktok.creative.headline}</strong>
+      </div>
+    </div>
+  )}
+</div>
   </div>
 )}
 
@@ -838,9 +915,13 @@ const budgetIsValid =
   type="button"
   className="continueButton"
   onClick={generateCampaignPlan}
-  disabled={generatingPlan}
+  disabled={generatingPlan || !!planResult}
 >
-  {generatingPlan ? "Generating..." : "Generate campaign plan"}
+  {generatingPlan
+    ? "Generating..."
+    : planResult
+      ? "Campaign plan generated"
+      : "Generate campaign plan"}
 </button>
     </div>
   </>

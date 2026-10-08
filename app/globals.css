@@ -447,3 +447,52 @@ button {
   color: #666666;
   line-height: 1.6;
 }
+
+.generatedPlans {
+  display: grid;
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.generatedPlanCard {
+  padding: 20px;
+  border: 1px solid #e5e5e5;
+  border-radius: 14px;
+  background: #fafafa;
+}
+
+.generatedPlanHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  align-items: flex-start;
+  margin-bottom: 18px;
+}
+
+.generatedPlanHeader h3 {
+  margin: 4px 0 0;
+  font-size: 20px;
+}
+
+.generatedPlanLabel {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: #777777;
+}
+
+.generatedPlanRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 10px 0;
+  border-top: 1px solid #e8e8e8;
+}
+
+.generatedPlanRow span {
+  color: #666666;
+}
+
+.generatedPlanRow strong {
+  text-align: right;
+}
