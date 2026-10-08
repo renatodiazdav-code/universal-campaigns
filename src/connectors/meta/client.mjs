@@ -117,7 +117,7 @@ export function createMetaClient({
     }
 
     const response = await fetch(
-      `${META_GRAPH_URL}/act_${adAccountId}/campaigns`,
+      `${META_GRAPH_URL}/${getAdAccountNodeId(adAccountId)}/campaigns`,
       {
         method: "POST",
         headers: {
@@ -175,41 +175,62 @@ export function createMetaClient({
     countries = ["PE"],
     ageMin = 18,
     ageMax = 35,
+    optimizationGoal = "LINK_CLICKS",
+    pixelId = null,
+    conversionEvent = "PURCHASE",
     status = "PAUSED",
   }) {
     if (!adAccountId) {
       throw new Error("Missing Meta ad account ID");
     }
 
+    if (
+      optimizationGoal === "OFFSITE_CONVERSIONS" &&
+      !pixelId
+    ) {
+      throw new Error(
+        "Meta pixel ID is required for conversion optimization"
+      );
+    }
+
+    const body = {
+      name,
+      campaign_id: campaignId,
+      daily_budget: String(dailyBudget),
+      billing_event: "IMPRESSIONS",
+      optimization_goal: optimizationGoal,
+      bid_strategy: "LOWEST_COST_WITHOUT_CAP",
+
+      targeting: JSON.stringify({
+        geo_locations: {
+          countries,
+        },
+        age_min: ageMin,
+        age_max: ageMax,
+        targeting_automation: {
+          advantage_audience: 0,
+        },
+      }),
+
+      status,
+      access_token: accessToken,
+    };
+
+    if (optimizationGoal === "OFFSITE_CONVERSIONS") {
+      body.promoted_object = JSON.stringify({
+        pixel_id: pixelId,
+        custom_event_type: conversionEvent,
+      });
+    }
+
     const response = await fetch(
-      `${META_GRAPH_URL}/act_${adAccountId}/adsets`,
+      `${META_GRAPH_URL}/${getAdAccountNodeId(adAccountId)}/adsets`,
       {
         method: "POST",
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",
         },
-        body: new URLSearchParams({
-          name,
-          campaign_id: campaignId,
-          daily_budget: String(dailyBudget),
-          billing_event: "IMPRESSIONS",
-          optimization_goal: "LINK_CLICKS",
-          bid_strategy: "LOWEST_COST_WITHOUT_CAP",
-
-          targeting: JSON.stringify({
-            geo_locations: {
-              countries,
-            },
-            age_min: ageMin,
-            age_max: ageMax,
-            targeting_automation: {
-              advantage_audience: 0,
-            },
-          }),
-
-          status,
-          access_token: accessToken,
-        }),
+        body: new URLSearchParams(body),
       }
     );
 
@@ -248,7 +269,7 @@ export function createMetaClient({
     };
 
     const response = await fetch(
-      `${META_GRAPH_URL}/act_${adAccountId}/adcreatives`,
+      `${META_GRAPH_URL}/${getAdAccountNodeId(adAccountId)}/adcreatives`,
       {
         method: "POST",
         headers: {
@@ -279,7 +300,7 @@ export function createMetaClient({
     getBusinessAdAccounts,
     getBusinessPages,
     getAdAccountPixels,
-    
+
     createCampaign,
     getCampaign,
     createAdSet,
