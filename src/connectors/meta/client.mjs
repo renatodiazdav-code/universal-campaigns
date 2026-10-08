@@ -1,9 +1,75 @@
 const META_API_VERSION = "v26.0";
 const META_GRAPH_URL = `https://graph.facebook.com/${META_API_VERSION}`;
 
-export function createMetaClient({ adAccountId, accessToken }) {
-  if (!adAccountId || !accessToken) {
-    throw new Error("Missing Meta ad account ID or access token");
+export function createMetaClient({
+  adAccountId,
+  accessToken,
+}) {
+  if (!accessToken) {
+    throw new Error("Missing Meta access token");
+  }
+
+  async function getBusinesses() {
+    const params = new URLSearchParams({
+      fields: "id,name",
+      access_token: accessToken,
+    });
+
+    const response = await fetch(
+      `${META_GRAPH_URL}/me/businesses?${params}`
+    );
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        `Meta get businesses failed: ${JSON.stringify(result)}`
+      );
+    }
+
+    return result.data ?? [];
+  }
+
+  async function getBusinessAdAccounts(businessId) {
+    const params = new URLSearchParams({
+      fields: "id,name,account_status,currency",
+      access_token: accessToken,
+    });
+
+    const response = await fetch(
+      `${META_GRAPH_URL}/${businessId}/owned_ad_accounts?${params}`
+    );
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        `Meta get business ad accounts failed: ${JSON.stringify(result)}`
+      );
+    }
+
+    return result.data ?? [];
+  }
+
+  async function getBusinessPages(businessId) {
+    const params = new URLSearchParams({
+      fields: "id,name",
+      access_token: accessToken,
+    });
+
+    const response = await fetch(
+      `${META_GRAPH_URL}/${businessId}/owned_pages?${params}`
+    );
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        `Meta get business pages failed: ${JSON.stringify(result)}`
+      );
+    }
+
+    return result.data ?? [];
   }
 
   async function createCampaign({
@@ -13,6 +79,10 @@ export function createMetaClient({ adAccountId, accessToken }) {
     isAdsetBudgetSharingEnabled = false,
     status = "PAUSED",
   }) {
+    if (!adAccountId) {
+      throw new Error("Missing Meta ad account ID");
+    }
+
     const response = await fetch(
       `${META_GRAPH_URL}/act_${adAccountId}/campaigns`,
       {
@@ -23,7 +93,8 @@ export function createMetaClient({ adAccountId, accessToken }) {
         body: new URLSearchParams({
           name,
           objective,
-          special_ad_categories: JSON.stringify(specialAdCategories),
+          special_ad_categories:
+            JSON.stringify(specialAdCategories),
           is_adset_budget_sharing_enabled:
             String(isAdsetBudgetSharingEnabled),
           status,
@@ -73,6 +144,10 @@ export function createMetaClient({ adAccountId, accessToken }) {
     ageMax = 35,
     status = "PAUSED",
   }) {
+    if (!adAccountId) {
+      throw new Error("Missing Meta ad account ID");
+    }
+
     const response = await fetch(
       `${META_GRAPH_URL}/act_${adAccountId}/adsets`,
       {
@@ -124,6 +199,10 @@ export function createMetaClient({ adAccountId, accessToken }) {
     destinationUrl,
     imageUrl,
   }) {
+    if (!adAccountId) {
+      throw new Error("Missing Meta ad account ID");
+    }
+
     const objectStorySpec = {
       page_id: pageId,
 
@@ -144,7 +223,8 @@ export function createMetaClient({ adAccountId, accessToken }) {
         },
         body: new URLSearchParams({
           name,
-          object_story_spec: JSON.stringify(objectStorySpec),
+          object_story_spec:
+            JSON.stringify(objectStorySpec),
           access_token: accessToken,
         }),
       }
@@ -162,6 +242,10 @@ export function createMetaClient({ adAccountId, accessToken }) {
   }
 
   return {
+    getBusinesses,
+    getBusinessAdAccounts,
+    getBusinessPages,
+
     createCampaign,
     getCampaign,
     createAdSet,
