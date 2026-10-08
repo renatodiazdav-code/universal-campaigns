@@ -116,15 +116,14 @@ export async function GET(request) {
     const setup = await discoverMetaSetup(meta);
 
     await saveMetaConnection({
-  accessToken,
-  setup,
-  connectedAt: new Date().toISOString(),
-});
-
-    const response = NextResponse.json({
-      status: "CONNECTED",
+      accessToken,
       setup,
+      connectedAt: new Date().toISOString(),
     });
+
+    const response = NextResponse.redirect(
+      "http://localhost:3000/campaign/new?meta=connected"
+    );
 
     response.cookies.delete("meta_oauth_state");
 
