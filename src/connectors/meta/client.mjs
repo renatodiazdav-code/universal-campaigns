@@ -65,61 +65,106 @@ export function createMetaClient({ adAccountId, accessToken }) {
   }
 
   async function createAdSet({
-  name,
-  campaignId,
-  dailyBudget,
-  countries = ["PE"],
-  ageMin = 18,
-  ageMax = 35,
-  status = "PAUSED",
-}) {
-  
-  const response = await fetch(
-    `${META_GRAPH_URL}/act_${adAccountId}/adsets`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: new URLSearchParams({
-  name,
-  campaign_id: campaignId,
-  daily_budget: String(dailyBudget),
-  billing_event: "IMPRESSIONS",
-  optimization_goal: "LINK_CLICKS",
-  bid_strategy: "LOWEST_COST_WITHOUT_CAP",
+    name,
+    campaignId,
+    dailyBudget,
+    countries = ["PE"],
+    ageMin = 18,
+    ageMax = 35,
+    status = "PAUSED",
+  }) {
+    const response = await fetch(
+      `${META_GRAPH_URL}/act_${adAccountId}/adsets`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: new URLSearchParams({
+          name,
+          campaign_id: campaignId,
+          daily_budget: String(dailyBudget),
+          billing_event: "IMPRESSIONS",
+          optimization_goal: "LINK_CLICKS",
+          bid_strategy: "LOWEST_COST_WITHOUT_CAP",
 
-  targeting: JSON.stringify({
-  geo_locations: {
-    countries,
-  },
-  age_min: ageMin,
-  age_max: ageMax,
-  targeting_automation: {
-    advantage_audience: 0,
-  },
-}),
+          targeting: JSON.stringify({
+            geo_locations: {
+              countries,
+            },
+            age_min: ageMin,
+            age_max: ageMax,
+            targeting_automation: {
+              advantage_audience: 0,
+            },
+          }),
 
-  status,
-  access_token: accessToken,
-}),
-    }
-  );
-
-  const result = await response.json();
-
-  if (!response.ok) {
-    throw new Error(
-      `Meta create ad set failed: ${JSON.stringify(result)}`
+          status,
+          access_token: accessToken,
+        }),
+      }
     );
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        `Meta create ad set failed: ${JSON.stringify(result)}`
+      );
+    }
+
+    return result;
   }
 
-  return result;
-}
+  async function createAdCreative({
+    name,
+    pageId,
+    message,
+    headline,
+    destinationUrl,
+    imageUrl,
+  }) {
+    const objectStorySpec = {
+      page_id: pageId,
+
+      link_data: {
+        link: destinationUrl,
+        message,
+        name: headline,
+        picture: imageUrl,
+      },
+    };
+
+    const response = await fetch(
+      `${META_GRAPH_URL}/act_${adAccountId}/adcreatives`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: new URLSearchParams({
+          name,
+          object_story_spec: JSON.stringify(objectStorySpec),
+          access_token: accessToken,
+        }),
+      }
+    );
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        `Meta create ad creative failed: ${JSON.stringify(result)}`
+      );
+    }
+
+    return result;
+  }
 
   return {
-  createCampaign,
-  getCampaign,
-  createAdSet,
-};
+    createCampaign,
+    getCampaign,
+    createAdSet,
+    createAdCreative,
+  };
 }
