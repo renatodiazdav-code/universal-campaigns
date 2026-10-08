@@ -414,7 +414,11 @@ export default function NewCampaignPage() {
                 <div>
                   <strong>Meta</strong>
                   <span>
-                    Facebook + Instagram
+                    {metaSetupLoading
+                      ? "Checking connection..."
+                      : metaSetup?.status === "READY"
+                        ? "Facebook + Instagram"
+                        : "Connect Meta first"}
                   </span>
                 </div>
 
