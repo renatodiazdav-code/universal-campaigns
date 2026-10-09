@@ -2,3 +2,4 @@
 node_modules/
 .next/
 data/meta-connection.json
+data/campaigns.json

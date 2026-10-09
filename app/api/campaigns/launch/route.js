@@ -1,6 +1,7 @@
 import { createUniversalCampaign } from "../../../../src/domain/universal-campaign.mjs";
 import { executeMetaCampaign } from "../../../../src/application/execute-meta-campaign.mjs";
 import { loadMetaConnection } from "../../../../src/application/meta-connection-store.mjs";
+import { campaignStore } from "../../../../src/application/campaign-store.mjs";
 
 export async function POST(request) {
   try {
@@ -78,9 +79,39 @@ export async function POST(request) {
       );
     }
 
+    const storedCampaign = await campaignStore.save({
+      name: campaign.name,
+      status: "PAUSED",
+
+      input: {
+        goal: campaign.goal,
+        product: campaign.product,
+        audience: campaign.audience,
+        budget: campaign.budget,
+        platforms: campaign.platforms,
+        creative: campaign.creative,
+      },
+
+      resolvedConfiguration: {
+        meta: metaResult.configuration,
+      },
+
+      execution: {
+        meta: {
+          status: metaResult.status,
+          campaignId: metaResult.campaign.id,
+          adSetId: metaResult.adSet.id,
+          creativeId: metaResult.creative.id,
+          adId: metaResult.ad.id,
+        },
+      },
+    });
+
     return Response.json({
       status: "CREATED",
       campaign,
+      storedCampaign,
+
       platforms: {
         meta: metaResult,
       },
@@ -91,6 +122,8 @@ export async function POST(request) {
           "All Meta advertising objects were created paused. No ad spend has been activated.",
       },
     });
+
+
   } catch (error) {
     console.error("Campaign launch error:", error);
 
