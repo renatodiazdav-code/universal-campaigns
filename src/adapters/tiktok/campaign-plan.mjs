@@ -35,6 +35,7 @@ export function buildTikTokCampaignPlan(campaign) {
       headline: campaign.creative.headline,
       destinationUrl: campaign.creative.destinationUrl,
       imageUrl: campaign.product.imageUrl,
+      callToAction: campaign.creative.callToAction,
     },
 
     sourceCampaignVersion: campaign.version,
