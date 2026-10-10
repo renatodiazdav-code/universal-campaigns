@@ -2,6 +2,24 @@
 
 import { useEffect, useState } from "react";
 
+function formatMoney(value, currency) {
+    if (value == null) {
+        return "—";
+    }
+
+    const safeCurrency = currency || "PEN";
+
+    return `${safeCurrency} ${Number(value).toFixed(2)}`;
+}
+
+function formatRoas(value) {
+    if (value == null) {
+        return "—";
+    }
+
+    return `${Number(value).toFixed(2)}x`;
+}
+
 export default function CampaignsPage() {
     const [campaigns, setCampaigns] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -55,7 +73,7 @@ export default function CampaignsPage() {
                 </h1>
 
                 <p className="campaignSubtitle">
-                    Campaigns created through Relay will appear here.
+                    See how your ads are performing without opening Ads Manager.
                 </p>
 
                 {loading && (
@@ -78,7 +96,7 @@ export default function CampaignsPage() {
 
                             <p className="reviewDescription">
                                 Create your first campaign and Relay will
-                                keep it here.
+                                keep its status and performance here.
                             </p>
 
                             <a
@@ -90,75 +108,139 @@ export default function CampaignsPage() {
                         </div>
                     )}
 
-                {campaigns.map((campaign) => (
-                    <div
-                        key={campaign.id}
-                        className="reviewSection"
-                    >
-                        <div className="reviewRow">
-                            <span>Campaign</span>
-                            <strong>{campaign.name}</strong>
-                        </div>
+                {campaigns.map((campaign) => {
+                    const metrics =
+                        campaign.performance?.metrics;
 
-                        <div className="reviewRow">
-                            <span>Status</span>
+                    const currency =
+                        metrics?.currency ||
+                        campaign.input?.budget?.currency ||
+                        "PEN";
 
-                            <strong>
-                                {campaign.liveStatus?.ad?.effectiveStatus ||
-                                    campaign.liveStatus?.campaign?.effectiveStatus ||
-                                    campaign.status}
-                            </strong>
-                        </div>
-
-                        {campaign.liveStatus?.checkedAt && (
+                    return (
+                        <div
+                            key={campaign.id}
+                            className="reviewSection"
+                        >
                             <div className="reviewRow">
-                                <span>Last checked</span>
+                                <span>Campaign</span>
+                                <strong>{campaign.name}</strong>
+                            </div>
 
+                            <div className="reviewRow">
+                                <span>Status</span>
                                 <strong>
-                                    {new Date(
-                                        campaign.liveStatus.checkedAt
-                                    ).toLocaleTimeString()}
+                                    {campaign.liveStatus?.ad?.effectiveStatus ||
+                                        campaign.liveStatus?.campaign?.effectiveStatus ||
+                                        campaign.status}
                                 </strong>
                             </div>
-                        )}
 
-                        <div className="reviewRow">
-                            <span>Product</span>
-                            <strong>
-                                {campaign.input?.product?.title || "—"}
-                            </strong>
-                        </div>
+                            {metrics ? (
+                                <>
+                                    <div className="reviewRow">
+                                        <span>Spend</span>
+                                        <strong>
+                                            {formatMoney(
+                                                metrics.spend,
+                                                currency
+                                            )}
+                                        </strong>
+                                    </div>
 
-                        <div className="reviewRow">
-                            <span>Platform</span>
-                            <strong>
-                                {campaign.execution?.meta
-                                    ? "Meta"
-                                    : "—"}
-                            </strong>
-                        </div>
+                                    <div className="reviewRow">
+                                        <span>Sales</span>
+                                        <strong>
+                                            {metrics.sales ?? 0}
+                                        </strong>
+                                    </div>
 
-                        <div className="reviewRow">
-                            <span>Budget</span>
-                            <strong>
-                                {campaign.input?.budget
-                                    ? `${campaign.input.budget.currency} ${campaign.input.budget.total}`
-                                    : "—"}
-                            </strong>
-                        </div>
+                                    <div className="reviewRow">
+                                        <span>Revenue</span>
+                                        <strong>
+                                            {formatMoney(
+                                                metrics.revenue,
+                                                currency
+                                            )}
+                                        </strong>
+                                    </div>
 
-                        <div className="reviewRow">
-                            <span>Created</span>
-                            <strong>
-                                {campaign.createdAt
-                                    ? new Date(
-                                        campaign.createdAt
-                                    ).toLocaleString()
-                                    : "—"}
-                            </strong>
+                                    <div className="reviewRow">
+                                        <span>Cost / sale</span>
+                                        <strong>
+                                            {formatMoney(
+                                                metrics.costPerSale,
+                                                currency
+                                            )}
+                                        </strong>
+                                    </div>
+
+                                    <div className="reviewRow">
+                                        <span>ROAS</span>
+                                        <strong>
+                                            {formatRoas(metrics.roas)}
+                                        </strong>
+                                    </div>
+                                </>
+                            ) : campaign.performance?.error ? (
+                                <p className="errorText">
+                                    Performance is temporarily unavailable.
+                                </p>
+                            ) : (
+                                <p className="reviewDescription">
+                                    No performance data yet.
+                                </p>
+                            )}
+
+                            <div className="reviewRow">
+                                <span>Product</span>
+                                <strong>
+                                    {campaign.input?.product?.title || "—"}
+                                </strong>
+                            </div>
+
+                            <div className="reviewRow">
+                                <span>Platform</span>
+                                <strong>
+                                    {campaign.execution?.meta
+                                        ? "Meta"
+                                        : "—"}
+                                </strong>
+                            </div>
+
+                            <div className="reviewRow">
+                                <span>Budget</span>
+                                <strong>
+                                    {campaign.input?.budget
+                                        ? `${campaign.input.budget.currency} ${campaign.input.budget.total}`
+                                        : "—"}
+                                </strong>
+                            </div>
+
+                            {campaign.liveStatus?.checkedAt && (
+                                <div className="reviewRow">
+                                    <span>Last checked</span>
+                                    <strong>
+                                        {new Date(
+                                            campaign.liveStatus.checkedAt
+                                        ).toLocaleTimeString()}
+                                    </strong>
+                                </div>
+                            )}
+
+                            <div className="reviewRow">
+                                <span>Created</span>
+                                <strong>
+                                    {campaign.createdAt
+                                        ? new Date(
+                                            campaign.createdAt
+                                        ).toLocaleString()
+                                        : "—"}
+                                </strong>
+                            </div>
                         </div>
-                    </div>
-                ))}
+                    );
+                })}
             </section>
         </main>
     );

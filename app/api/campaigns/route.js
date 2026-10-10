@@ -1,13 +1,22 @@
 import { campaignStore } from "../../../src/application/campaign-store.mjs";
 import { loadMetaConnection } from "../../../src/application/meta-connection-store.mjs";
 import { getMetaCampaignStatus } from "../../../src/application/get-meta-campaign-status.mjs";
+import { getMetaCampaignPerformance } from "../../../src/application/get-meta-campaign-performance.mjs";
+
+function metaReadError(error) {
+  return {
+    platform: "META",
+    error: error.message,
+    checkedAt: new Date().toISOString(),
+  };
+}
 
 export async function GET() {
   try {
     const campaigns = await campaignStore.list();
     const connection = await loadMetaConnection();
 
-    const campaignsWithStatus = await Promise.all(
+    const campaignsWithMetaData = await Promise.all(
       campaigns.map(async (campaign) => {
         if (
           !campaign.execution?.meta ||
@@ -16,37 +25,33 @@ export async function GET() {
           return {
             ...campaign,
             liveStatus: null,
+            performance: null,
           };
         }
 
-        try {
-          const liveStatus =
-            await getMetaCampaignStatus({
+        const [liveStatus, performance] =
+          await Promise.all([
+            getMetaCampaignStatus({
               storedCampaign: campaign,
               connection,
-            });
+            }).catch(metaReadError),
 
-          return {
-            ...campaign,
-            liveStatus,
-          };
-        } catch (error) {
-          return {
-            ...campaign,
+            getMetaCampaignPerformance({
+              storedCampaign: campaign,
+              connection,
+            }).catch(metaReadError),
+          ]);
 
-            liveStatus: {
-              platform: "META",
-              error: error.message,
-              checkedAt:
-                new Date().toISOString(),
-            },
-          };
-        }
+        return {
+          ...campaign,
+          liveStatus,
+          performance,
+        };
       })
     );
 
     return Response.json({
-      campaigns: campaignsWithStatus,
+      campaigns: campaignsWithMetaData,
     });
   } catch (error) {
     console.error(
