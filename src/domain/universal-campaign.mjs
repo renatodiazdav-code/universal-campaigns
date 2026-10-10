@@ -99,8 +99,13 @@ export function createUniversalCampaign(input) {
   if (
     Math.abs(allocatedBudget - budgetAmount) > 0.000001
   ) {
+    const budgetLabel =
+      budgetMode === "DAILY"
+        ? "daily budget"
+        : "total budget";
+
     throw new Error(
-      `Platform budgets must equal the ${budgetMode.toLowerCase()} budget. Expected ${budgetAmount}, got ${allocatedBudget}`
+      `Platform budgets must equal ${budgetLabel}. Expected ${budgetAmount}, got ${allocatedBudget}`
     );
   }
 
