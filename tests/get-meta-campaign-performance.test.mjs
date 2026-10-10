@@ -9,8 +9,62 @@ test("normalizes Meta insights into simple Relay performance metrics", async () 
   const calls = [];
 
   const fakeMeta = {
-    async getCampaignInsights(campaignId) {
-      calls.push(campaignId);
+    async getCampaignInsights(
+      campaignId,
+      options = {}
+    ) {
+      calls.push({ campaignId, options });
+
+      if (
+        options.breakdowns?.includes(
+          "publisher_platform"
+        )
+      ) {
+        return [
+          {
+            publisher_platform: "facebook",
+            spend: "50.00",
+            impressions: "8000",
+            clicks: "200",
+            account_currency: "PEN",
+            actions: [
+              {
+                action_type:
+                  "offsite_conversion.fb_pixel_purchase",
+                value: "4",
+              },
+            ],
+            action_values: [
+              {
+                action_type:
+                  "offsite_conversion.fb_pixel_purchase",
+                value: "300.00",
+              },
+            ],
+          },
+          {
+            publisher_platform: "instagram",
+            spend: "34.00",
+            impressions: "4500",
+            clicks: "140",
+            account_currency: "PEN",
+            actions: [
+              {
+                action_type:
+                  "offsite_conversion.fb_pixel_purchase",
+                value: "2",
+              },
+            ],
+            action_values: [
+              {
+                action_type:
+                  "offsite_conversion.fb_pixel_purchase",
+                value: "120.00",
+              },
+            ],
+          },
+        ];
+      }
 
       return [
         {
@@ -62,7 +116,16 @@ test("normalizes Meta insights into simple Relay performance metrics", async () 
       metaClient: fakeMeta,
     });
 
-  assert.deepEqual(calls, ["campaign-123"]);
+  assert.equal(calls.length, 2);
+  assert.equal(
+    calls[0].campaignId,
+    "campaign-123"
+  );
+  assert.deepEqual(
+    calls[1].options.breakdowns,
+    ["publisher_platform"]
+  );
+
   assert.equal(result.platform, "META");
   assert.equal(result.metrics.spend, 84);
   assert.equal(result.metrics.sales, 6);
@@ -72,6 +135,30 @@ test("normalizes Meta insights into simple Relay performance metrics", async () 
   assert.equal(result.metrics.impressions, 12500);
   assert.equal(result.metrics.clicks, 340);
   assert.equal(result.metrics.currency, "PEN");
+
+  assert.equal(
+    result.breakdowns.publisherPlatform.length,
+    2
+  );
+  assert.equal(
+    result.breakdowns.publisherPlatform[0].name,
+    "Facebook"
+  );
+  assert.equal(
+    result.breakdowns.publisherPlatform[0]
+      .metrics.sales,
+    4
+  );
+  assert.equal(
+    result.breakdowns.publisherPlatform[1].name,
+    "Instagram"
+  );
+  assert.equal(
+    result.breakdowns.publisherPlatform[1]
+      .metrics.roas,
+    120 / 34
+  );
+
   assert.ok(result.checkedAt);
 });
 
@@ -100,6 +187,10 @@ test("returns empty performance when Meta has no insights yet", async () => {
   assert.equal(result.metrics.revenue, 0);
   assert.equal(result.metrics.costPerSale, null);
   assert.equal(result.metrics.roas, null);
+  assert.deepEqual(
+    result.breakdowns.publisherPlatform,
+    []
+  );
 });
 
 test("does not invent revenue when purchase value is unavailable", async () => {
