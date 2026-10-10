@@ -5,17 +5,22 @@ function toMinorUnits(amount) {
   return Math.round(Number(amount) * 100);
 }
 
-function buildLifetimeSchedule({
-  totalBudget,
+function buildBudgetSchedule({
+  budgetMode,
+  allocatedBudget,
   durationDays,
   now = new Date(),
 }) {
-  if (!totalBudget || totalBudget <= 0) {
-    throw new Error("Meta campaign budget must be greater than zero");
+  if (!allocatedBudget || allocatedBudget <= 0) {
+    throw new Error(
+      "Meta campaign budget must be greater than zero"
+    );
   }
 
   if (!durationDays || durationDays <= 0) {
-    throw new Error("Campaign duration must be greater than zero");
+    throw new Error(
+      "Campaign duration must be greater than zero"
+    );
   }
 
   const start = new Date(now);
@@ -29,8 +34,26 @@ function buildLifetimeSchedule({
       Number(durationDays) * 24 * 60 * 60 * 1000
   );
 
+  const mode = String(
+    budgetMode ?? "TOTAL"
+  ).toUpperCase();
+
+  if (mode !== "TOTAL" && mode !== "DAILY") {
+    throw new Error(
+      "Meta budget mode must be TOTAL or DAILY"
+    );
+  }
+
   return {
-    lifetimeBudget: toMinorUnits(totalBudget),
+    budgetMode: mode,
+    dailyBudget:
+      mode === "DAILY"
+        ? toMinorUnits(allocatedBudget)
+        : null,
+    lifetimeBudget:
+      mode === "TOTAL"
+        ? toMinorUnits(allocatedBudget)
+        : null,
     startTime: start.toISOString(),
     endTime: end.toISOString(),
   };
@@ -91,8 +114,9 @@ export async function executeMetaCampaign({
 
     created.campaignId = metaCampaign.id;
 
-    const schedule = buildLifetimeSchedule({
-      totalBudget: metaPlan.budget.allocated,
+    const schedule = buildBudgetSchedule({
+      budgetMode: metaPlan.budget.mode,
+      allocatedBudget: metaPlan.budget.allocated,
       durationDays: campaign.budget.durationDays,
       now,
     });
@@ -100,6 +124,8 @@ export async function executeMetaCampaign({
     const adSet = await meta.createAdSet({
       name: `${campaign.name} - Ad Set`,
       campaignId: metaCampaign.id,
+      budgetMode: schedule.budgetMode,
+      dailyBudget: schedule.dailyBudget,
       lifetimeBudget: schedule.lifetimeBudget,
       startTime: schedule.startTime,
       endTime: schedule.endTime,
@@ -170,7 +196,8 @@ export async function executeMetaCampaign({
           id: page.id,
           name: page.name,
         },
-        budgetMode: "LIFETIME",
+        budgetMode: schedule.budgetMode,
+        dailyBudget: schedule.dailyBudget,
         lifetimeBudget: schedule.lifetimeBudget,
         startTime: schedule.startTime,
         endTime: schedule.endTime,
