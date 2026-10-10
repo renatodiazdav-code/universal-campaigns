@@ -34,16 +34,17 @@ export async function getExchangeRate({
     return cached.value;
   }
 
-  const params = new URLSearchParams({
-    base: normalizedBase,
-    symbols: normalizedQuote,
-  });
-
   const response = await fetchImpl(
-    `https://api.frankfurter.dev/v1/latest?${params}`
+    `https://api.frankfurter.dev/v2/rate/${normalizedBase.toLowerCase()}/${normalizedQuote.toLowerCase()}`
   );
 
-  const result = await response.json();
+  let result = null;
+
+  try {
+    result = await response.json();
+  } catch {
+    result = null;
+  }
 
   if (!response.ok) {
     throw new Error(
@@ -51,9 +52,7 @@ export async function getExchangeRate({
     );
   }
 
-  const rate = Number(
-    result?.rates?.[normalizedQuote]
-  );
+  const rate = Number(result?.rate);
 
   if (!Number.isFinite(rate) || rate <= 0) {
     throw new Error(
@@ -65,8 +64,8 @@ export async function getExchangeRate({
     base: normalizedBase,
     quote: normalizedQuote,
     rate,
-    date: result.date ?? null,
-    source: "FRANKFURTER",
+    date: result?.date ?? null,
+    source: "FRANKFURTER_V2",
   };
 
   cache.set(key, {
