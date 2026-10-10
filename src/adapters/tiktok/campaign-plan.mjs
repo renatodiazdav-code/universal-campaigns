@@ -23,10 +23,11 @@ export function buildTikTokCampaignPlan(campaign) {
     },
 
     budget: {
-  allocated: campaign.budget.allocation.tiktok,
-  currency: campaign.budget.currency,
-  durationDays: campaign.budget.durationDays,
-},
+      mode: campaign.budget.mode ?? "TOTAL",
+      allocated: campaign.budget.allocation.tiktok,
+      currency: campaign.budget.currency,
+      durationDays: campaign.budget.durationDays,
+    },
 
     creative: {
       type: campaign.creative.type,
