@@ -171,7 +171,7 @@ export function createMetaClient({
   async function getAdSet(adSetId) {
     const params = new URLSearchParams({
       fields:
-        "id,name,status,effective_status,optimization_goal,start_time,end_time,lifetime_budget",
+        "id,name,status,effective_status,optimization_goal,start_time,end_time,daily_budget,lifetime_budget",
       access_token: accessToken,
     });
 
@@ -214,7 +214,9 @@ export function createMetaClient({
   async function createAdSet({
     name,
     campaignId,
-    lifetimeBudget,
+    budgetMode = "TOTAL",
+    dailyBudget = null,
+    lifetimeBudget = null,
     startTime,
     endTime,
     countries = ["PE"],
@@ -229,8 +231,24 @@ export function createMetaClient({
       throw new Error("Missing Meta ad account ID");
     }
 
-    if (!lifetimeBudget || lifetimeBudget <= 0) {
-      throw new Error("Meta lifetime budget must be greater than zero");
+    const mode = String(budgetMode).toUpperCase();
+
+    if (mode === "DAILY") {
+      if (!dailyBudget || dailyBudget <= 0) {
+        throw new Error(
+          "Meta daily budget must be greater than zero"
+        );
+      }
+    } else if (mode === "TOTAL") {
+      if (!lifetimeBudget || lifetimeBudget <= 0) {
+        throw new Error(
+          "Meta lifetime budget must be greater than zero"
+        );
+      }
+    } else {
+      throw new Error(
+        "Meta budget mode must be TOTAL or DAILY"
+      );
     }
 
     if (!startTime || !endTime) {
@@ -249,7 +267,6 @@ export function createMetaClient({
     const body = {
       name,
       campaign_id: campaignId,
-      lifetime_budget: String(lifetimeBudget),
       start_time: startTime,
       end_time: endTime,
       billing_event: "IMPRESSIONS",
@@ -270,6 +287,12 @@ export function createMetaClient({
       status,
       access_token: accessToken,
     };
+
+    if (mode === "DAILY") {
+      body.daily_budget = String(dailyBudget);
+    } else {
+      body.lifetime_budget = String(lifetimeBudget);
+    }
 
     if (optimizationGoal === "OFFSITE_CONVERSIONS") {
       body.promoted_object = JSON.stringify({
