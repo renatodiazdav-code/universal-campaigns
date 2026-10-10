@@ -3,12 +3,22 @@ import { executeMetaCampaign } from "../../../../src/application/execute-meta-ca
 import { loadMetaConnection } from "../../../../src/application/meta-connection-store.mjs";
 import { campaignStore } from "../../../../src/application/campaign-store.mjs";
 import { checkBudgetCompatibility } from "../../../../src/application/check-budget-compatibility.mjs";
+import { resolveCampaignBudgetInput } from "../../../../src/application/resolve-campaign-budget-input.mjs";
 
 export async function POST(request) {
   try {
-    const campaignInput = await request.json();
+    const rawCampaignInput = await request.json();
 
-    const campaign = createUniversalCampaign(campaignInput);
+    const {
+      input: campaignInput,
+      allocation,
+    } = await resolveCampaignBudgetInput(
+      rawCampaignInput
+    );
+
+    const campaign = createUniversalCampaign(
+      campaignInput
+    );
 
     const compatibility =
       await checkBudgetCompatibility(campaign);
@@ -21,6 +31,7 @@ export async function POST(request) {
             compatibility.issues[0]?.message ||
             "Campaign budget is not compatible with the selected platforms",
           compatibility,
+          allocation,
         },
         {
           status: 400,
@@ -46,6 +57,7 @@ export async function POST(request) {
           status: "ERROR",
           error: "TikTok execution is not implemented yet",
           compatibility,
+          allocation,
         },
         {
           status: 400,
@@ -89,6 +101,7 @@ export async function POST(request) {
         {
           status: "FAILED",
           campaign,
+          allocation,
           platforms: {
             meta: metaResult,
           },
@@ -130,6 +143,7 @@ export async function POST(request) {
     return Response.json({
       status: "CREATED",
       campaign,
+      allocation,
       compatibility,
       storedCampaign,
 
@@ -152,6 +166,7 @@ export async function POST(request) {
         error:
           error.message ||
           "Could not launch campaign",
+        allocation: error.allocation ?? null,
       },
       {
         status: 500,
