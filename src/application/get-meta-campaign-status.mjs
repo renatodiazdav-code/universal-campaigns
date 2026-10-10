@@ -67,6 +67,12 @@ export async function getMetaCampaignStatus({
       status: adSet.status,
       effectiveStatus:
         adSet.effective_status,
+      startTime: adSet.start_time ?? null,
+      endTime: adSet.end_time ?? null,
+      lifetimeBudget:
+        adSet.lifetime_budget != null
+          ? Number(adSet.lifetime_budget)
+          : null,
     },
 
     ad: {
