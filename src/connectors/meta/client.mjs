@@ -392,6 +392,7 @@ export function createMetaClient({
     destinationUrl,
     imageUrl,
     callToAction = "SHOP_NOW",
+    instagramActorId = null,
   }) {
     if (!adAccountId) {
       throw new Error("Missing Meta ad account ID");
@@ -410,6 +411,10 @@ export function createMetaClient({
         },
       },
     };
+
+    if (instagramActorId) {
+      objectStorySpec.instagram_actor_id = String(instagramActorId);
+    }
 
     const response = await fetch(
       `${META_GRAPH_URL}/${getAdAccountNodeId(adAccountId)}/adcreatives`,
