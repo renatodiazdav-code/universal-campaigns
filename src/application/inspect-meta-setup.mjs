@@ -90,16 +90,23 @@ export async function inspectMetaSetup({
     };
   }
 
-  const [adAccounts, pages, pixels, instagramAccounts] =
-    await Promise.all([
-      meta.getBusinessAdAccounts(storedBusiness.id),
-      meta.getBusinessPages(storedBusiness.id),
-      meta.getAdAccountPixels(storedAdAccount.id),
-      getInstagramAccounts({
-        adAccountId: storedAdAccount.id,
-        accessToken: connection.accessToken,
-      }),
-    ]);
+  const [adAccounts, pages, pixels] = await Promise.all([
+    meta.getBusinessAdAccounts(storedBusiness.id),
+    meta.getBusinessPages(storedBusiness.id),
+    meta.getAdAccountPixels(storedAdAccount.id),
+  ]);
+
+  let instagramAccounts = [];
+  let instagramDiscoveryError = null;
+
+  try {
+    instagramAccounts = await getInstagramAccounts({
+      adAccountId: storedAdAccount.id,
+      accessToken: connection.accessToken,
+    });
+  } catch (error) {
+    instagramDiscoveryError = error;
+  }
 
   const liveAdAccount = adAccounts.find(
     (account) => String(account.id) === String(storedAdAccount.id)
@@ -117,19 +124,24 @@ export async function inspectMetaSetup({
     multipleStatus: "NEEDS_SELECTION",
   });
 
-  const selectedInstagram = chooseSelectedItem(
-    instagramAccounts,
-    connection.identity?.instagram?.account?.id ?? null
-  );
-  const instagramStatus = buildSelectionState(
-    instagramAccounts,
-    selectedInstagram,
-    {
-      noneStatus: "NONE_FOUND",
-      readyStatus: "READY",
-      multipleStatus: "NEEDS_SELECTION",
-    }
-  );
+  const selectedInstagram = instagramDiscoveryError
+    ? null
+    : chooseSelectedItem(
+        instagramAccounts,
+        connection.identity?.instagram?.account?.id ?? null
+      );
+
+  const instagramStatus = instagramDiscoveryError
+    ? "DISCOVERY_ERROR"
+    : buildSelectionState(
+        instagramAccounts,
+        selectedInstagram,
+        {
+          noneStatus: "NONE_FOUND",
+          readyStatus: "READY",
+          multipleStatus: "NEEDS_SELECTION",
+        }
+      );
 
   const issues = [];
 
@@ -176,7 +188,14 @@ export async function inspectMetaSetup({
     });
   }
 
-  if (instagramStatus === "NONE_FOUND") {
+  if (instagramStatus === "DISCOVERY_ERROR") {
+    issues.push({
+      code: "META_INSTAGRAM_DISCOVERY_FAILED",
+      severity: "WARNING",
+      message:
+        "Relay could not check Instagram identities right now. Meta can remain connected, but Instagram setup should be checked again before launching there.",
+    });
+  } else if (instagramStatus === "NONE_FOUND") {
     issues.push({
       code: "META_INSTAGRAM_IDENTITY_MISSING",
       severity: "WARNING",
@@ -234,6 +253,7 @@ export async function inspectMetaSetup({
       selected: selectedInstagram,
       accounts: instagramAccounts,
       count: instagramAccounts.length,
+      error: instagramDiscoveryError?.message ?? null,
     },
 
     tracking: {
