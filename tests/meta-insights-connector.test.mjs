@@ -45,6 +45,10 @@ test("requests campaign-level Meta Insights with Relay MVP fields", async () => 
     url.searchParams.get("action_report_time"),
     "conversion"
   );
+  assert.equal(
+    url.searchParams.get("breakdowns"),
+    null
+  );
   assert.match(
     url.searchParams.get("fields"),
     /spend/
@@ -62,4 +66,35 @@ test("requests campaign-level Meta Insights with Relay MVP fields", async () => 
       spend: "10.00",
     },
   ]);
+});
+
+test("supports Meta publisher platform breakdown", async () => {
+  let requestedUrl = "";
+
+  const fetchImpl = async (url) => {
+    requestedUrl = String(url);
+
+    return {
+      ok: true,
+      async json() {
+        return {
+          data: [],
+        };
+      },
+    };
+  };
+
+  await getMetaCampaignInsights({
+    campaignId: "campaign-123",
+    accessToken: "fake-token",
+    breakdowns: ["publisher_platform"],
+    fetchImpl,
+  });
+
+  const url = new URL(requestedUrl);
+
+  assert.equal(
+    url.searchParams.get("breakdowns"),
+    "publisher_platform"
+  );
 });
