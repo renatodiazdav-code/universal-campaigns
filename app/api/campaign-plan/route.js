@@ -1,10 +1,16 @@
 import { createUniversalCampaign } from "../../../src/domain/universal-campaign.mjs";
 import { buildPlatformPlans } from "../../../src/application/build-platform-plans.mjs";
 import { checkBudgetCompatibility } from "../../../src/application/check-budget-compatibility.mjs";
+import { resolveCampaignBudgetInput } from "../../../src/application/resolve-campaign-budget-input.mjs";
 
 export async function POST(request) {
   try {
-    const input = await request.json();
+    const rawInput = await request.json();
+
+    const {
+      input,
+      allocation,
+    } = await resolveCampaignBudgetInput(rawInput);
 
     const campaign = createUniversalCampaign(input);
 
@@ -18,6 +24,7 @@ export async function POST(request) {
             compatibility.issues[0]?.message ||
             "Campaign budget is not compatible with the selected platforms",
           compatibility,
+          allocation,
         },
         {
           status: 400,
@@ -29,6 +36,7 @@ export async function POST(request) {
 
     return Response.json({
       campaign,
+      allocation,
       compatibility,
       plans,
     });
@@ -37,7 +45,10 @@ export async function POST(request) {
 
     return Response.json(
       {
-        error: error.message || "Could not generate campaign plan",
+        error:
+          error.message ||
+          "Could not generate campaign plan",
+        allocation: error.allocation ?? null,
       },
       {
         status: 400,
