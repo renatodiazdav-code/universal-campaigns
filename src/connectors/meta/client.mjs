@@ -391,6 +391,7 @@ export function createMetaClient({
     headline,
     destinationUrl,
     imageUrl,
+    callToAction = "SHOP_NOW",
   }) {
     if (!adAccountId) {
       throw new Error("Missing Meta ad account ID");
@@ -404,6 +405,9 @@ export function createMetaClient({
         message,
         name: headline,
         picture: imageUrl,
+        call_to_action: {
+          type: callToAction,
+        },
       },
     };
 
