@@ -39,10 +39,11 @@ export function buildMetaCampaignPlan(campaign) {
     },
 
     budget: {
-  allocated: campaign.budget.allocation.meta,
-  currency: campaign.budget.currency,
-  durationDays: campaign.budget.durationDays,
-},
+      mode: campaign.budget.mode ?? "TOTAL",
+      allocated: campaign.budget.allocation.meta,
+      currency: campaign.budget.currency,
+      durationDays: campaign.budget.durationDays,
+    },
 
     placements,
 
