@@ -563,3 +563,70 @@ button {
 .platformCard:disabled:hover {
   transform: none;
 }
+
+.campaignActionRight {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.advancedLink {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #555555;
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.advancedLink:hover {
+  color: #111111;
+}
+
+.advancedPanel {
+  margin-top: 24px;
+  padding: 22px;
+  border: 1px solid #e5e5e5;
+  border-radius: 16px;
+  background: #fafafa;
+}
+
+.advancedPanelHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  align-items: flex-start;
+  margin-bottom: 18px;
+}
+
+.advancedPanelHeader h2 {
+  margin: 7px 0 0;
+}
+
+.advancedBudgetFields {
+  margin-top: 18px;
+}
+
+@media (max-width: 700px) {
+  .fieldRow,
+  .creativePreview {
+    grid-template-columns: 1fr;
+  }
+
+  .creativeImage {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 1;
+  }
+
+  .campaignActions {
+    align-items: flex-start;
+  }
+
+  .campaignActionRight {
+    flex-direction: column-reverse;
+    align-items: flex-end;
+  }
+}
