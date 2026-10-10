@@ -32,6 +32,29 @@ function formatPlatformResult(metrics, currency) {
     )} ROAS`;
 }
 
+function getPlatformLabel(campaign) {
+    const platforms = Object.values(
+        campaign.performance?.platforms || {}
+    )
+        .map((platform) => platform?.platform)
+        .filter(Boolean);
+
+    if (platforms.length > 0) {
+        return platforms
+            .map((platform) =>
+                platform.charAt(0) +
+                platform.slice(1).toLowerCase()
+            )
+            .join(" + ");
+    }
+
+    if (campaign.execution?.meta) {
+        return "Meta";
+    }
+
+    return "—";
+}
+
 export default function CampaignsPage() {
     const [campaigns, setCampaigns] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -124,8 +147,11 @@ export default function CampaignsPage() {
                     const metrics =
                         campaign.performance?.metrics;
 
+                    const metaPerformance =
+                        campaign.performance?.platforms?.meta;
+
                     const publisherBreakdown =
-                        campaign.performance?.breakdowns
+                        metaPerformance?.breakdowns
                             ?.publisherPlatform || [];
 
                     const currency =
@@ -237,9 +263,7 @@ export default function CampaignsPage() {
                             <div className="reviewRow">
                                 <span>Platform</span>
                                 <strong>
-                                    {campaign.execution?.meta
-                                        ? "Meta"
-                                        : "—"}
+                                    {getPlatformLabel(campaign)}
                                 </strong>
                             </div>
 
