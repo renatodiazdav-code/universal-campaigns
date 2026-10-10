@@ -7,10 +7,10 @@ export async function POST(request) {
     const compatibility =
       await checkBudgetCompatibility(input);
 
+    // An incompatible budget is a valid evaluation result, not an API failure.
+    // Consumers should read `eligible` and `issues` to decide whether to proceed.
     return Response.json(compatibility, {
-      status: compatibility.eligible
-        ? 200
-        : 400,
+      status: 200,
     });
   } catch (error) {
     console.error(
