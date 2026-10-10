@@ -20,6 +20,18 @@ function formatRoas(value) {
     return `${Number(value).toFixed(2)}x`;
 }
 
+function formatPlatformResult(metrics, currency) {
+    const sales = metrics?.sales ?? 0;
+    const salesLabel = sales === 1 ? "sale" : "sales";
+
+    return `${formatMoney(
+        metrics?.spend ?? 0,
+        currency
+    )} · ${sales} ${salesLabel} · ${formatRoas(
+        metrics?.roas
+    )} ROAS`;
+}
+
 export default function CampaignsPage() {
     const [campaigns, setCampaigns] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -112,6 +124,10 @@ export default function CampaignsPage() {
                     const metrics =
                         campaign.performance?.metrics;
 
+                    const publisherBreakdown =
+                        campaign.performance?.breakdowns
+                            ?.publisherPlatform || [];
+
                     const currency =
                         metrics?.currency ||
                         campaign.input?.budget?.currency ||
@@ -181,6 +197,25 @@ export default function CampaignsPage() {
                                             {formatRoas(metrics.roas)}
                                         </strong>
                                     </div>
+
+                                    {publisherBreakdown.map(
+                                        (publisher) => (
+                                            <div
+                                                key={publisher.id}
+                                                className="reviewRow"
+                                            >
+                                                <span>
+                                                    {publisher.name}
+                                                </span>
+                                                <strong>
+                                                    {formatPlatformResult(
+                                                        publisher.metrics,
+                                                        publisher.metrics?.currency || currency
+                                                    )}
+                                                </strong>
+                                            </div>
+                                        )
+                                    )}
                                 </>
                             ) : campaign.performance?.error ? (
                                 <p className="errorText">
