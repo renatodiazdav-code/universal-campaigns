@@ -56,6 +56,25 @@ export async function saveMetaPixelSelection(pixel) {
   return updatedConnection;
 }
 
+export async function saveMetaSetupSnapshot(snapshot) {
+  const connection = await loadMetaConnection();
+
+  if (!connection) {
+    throw new Error("Meta is not connected");
+  }
+
+  const updatedConnection = {
+    ...connection,
+    setupSnapshot: snapshot,
+    setupSnapshotUpdatedAt:
+      snapshot?.checkedAt ?? new Date().toISOString(),
+  };
+
+  await saveMetaConnection(updatedConnection);
+
+  return updatedConnection;
+}
+
 export async function deleteMetaConnection() {
   try {
     await fs.unlink(CONNECTION_FILE);
