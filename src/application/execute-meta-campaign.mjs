@@ -149,10 +149,11 @@ export async function executeMetaCampaign({
       name: `${campaign.name} - Creative`,
       pageId: page.id,
 
-      message: campaign.creative.primaryText,
-      headline: campaign.creative.headline,
-      destinationUrl: campaign.creative.destinationUrl,
-      imageUrl: campaign.product.imageUrl,
+      message: metaPlan.creative.primaryText,
+      headline: metaPlan.creative.headline,
+      destinationUrl: metaPlan.creative.destinationUrl,
+      imageUrl: metaPlan.creative.imageUrl,
+      callToAction: metaPlan.creative.callToAction,
     });
 
     created.creativeId = creative.id;
@@ -190,6 +191,7 @@ export async function executeMetaCampaign({
         objective: metaPlan.campaign.objective,
         optimizationGoal: "OFFSITE_CONVERSIONS",
         conversionEvent: "PURCHASE",
+        callToAction: metaPlan.creative.callToAction,
         audience: {
           countries: metaPlan.audience.countries,
           ageMin: metaPlan.audience.ageMin,
