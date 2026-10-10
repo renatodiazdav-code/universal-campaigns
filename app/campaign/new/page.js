@@ -22,7 +22,8 @@ export default function NewCampaignPage() {
   });
 
   const [budget, setBudget] = useState({
-    total: 100,
+    mode: "TOTAL",
+    amount: 100,
     durationDays: 7,
     meta: 60,
     tiktok: 40,
@@ -124,23 +125,28 @@ export default function NewCampaignPage() {
     !platforms.meta
       ? 0
       : !platforms.tiktok
-        ? budget.total
+        ? budget.amount
         : budget.meta;
 
   const expectedTikTokBudget =
     !platforms.tiktok
       ? 0
       : !platforms.meta
-        ? budget.total
+        ? budget.amount
         : budget.tiktok;
+
+  const projectedTotal =
+    budget.mode === "DAILY"
+      ? Number(budget.amount) * Number(budget.durationDays)
+      : Number(budget.amount);
 
   const allocationMatches =
     Math.abs(
-      expectedMetaBudget + expectedTikTokBudget - budget.total
+      expectedMetaBudget + expectedTikTokBudget - budget.amount
     ) < 0.000001;
 
   const basicBudgetIsValid =
-    budget.total > 0 &&
+    budget.amount > 0 &&
     budget.durationDays > 0 &&
     allocationMatches &&
     hasSelectedPlatform;
@@ -172,7 +178,8 @@ export default function NewCampaignPage() {
       },
 
       budget: {
-        total: Number(budget.total),
+        mode: budget.mode,
+        amount: Number(budget.amount),
         currency,
         durationDays: Number(budget.durationDays),
         allocation: {
@@ -265,7 +272,8 @@ export default function NewCampaignPage() {
     audience.ageMin,
     audience.ageMax,
     audience.gender,
-    budget.total,
+    budget.mode,
+    budget.amount,
     budget.durationDays,
     budget.meta,
     budget.tiktok,
@@ -643,18 +651,38 @@ export default function NewCampaignPage() {
             <div className="formSection">
               <h2>Budget</h2>
 
+              <label className="field">
+                <span>Budget type</span>
+                <select
+                  value={budget.mode}
+                  onChange={(event) =>
+                    setBudget((current) => ({
+                      ...current,
+                      mode: event.target.value,
+                    }))
+                  }
+                >
+                  <option value="TOTAL">Total budget</option>
+                  <option value="DAILY">Daily budget</option>
+                </select>
+              </label>
+
               <div className="fieldRow">
                 <label className="field">
-                  <span>Total budget ({currency})</span>
+                  <span>
+                    {budget.mode === "DAILY"
+                      ? `Daily budget (${currency}/day)`
+                      : `Total budget (${currency})`}
+                  </span>
                   <input
                     type="number"
                     min="1"
                     step="0.01"
-                    value={budget.total}
+                    value={budget.amount}
                     onChange={(event) =>
                       setBudget((current) => ({
                         ...current,
-                        total: Number(event.target.value),
+                        amount: Number(event.target.value),
                       }))
                     }
                   />
@@ -676,10 +704,22 @@ export default function NewCampaignPage() {
                 </label>
               </div>
 
+              {budget.mode === "DAILY" && (
+                <p className="allocationText">
+                  Estimated spend over {budget.durationDays} day
+                  {budget.durationDays === 1 ? "" : "s"}: {currency}{" "}
+                  {Number(projectedTotal).toFixed(2)}. Relay will still set an
+                  end date so the campaign does not run indefinitely.
+                </p>
+              )}
+
               {platforms.meta && platforms.tiktok && (
                 <div className="fieldRow">
                   <label className="field">
-                    <span>Meta budget ({currency})</span>
+                    <span>
+                      Meta {budget.mode === "DAILY" ? "daily" : "total"}{" "}
+                      budget ({currency})
+                    </span>
                     <input
                       type="number"
                       min="0"
@@ -695,7 +735,10 @@ export default function NewCampaignPage() {
                   </label>
 
                   <label className="field">
-                    <span>TikTok budget ({currency})</span>
+                    <span>
+                      TikTok {budget.mode === "DAILY" ? "daily" : "total"}{" "}
+                      budget ({currency})
+                    </span>
                     <input
                       type="number"
                       min="0"
@@ -714,13 +757,15 @@ export default function NewCampaignPage() {
 
               {platforms.meta && !platforms.tiktok && (
                 <p className="allocationText">
-                  Meta will receive the full campaign budget.
+                  Meta will receive the full {budget.mode === "DAILY" ? "daily" : "total"}{" "}
+                  campaign budget.
                 </p>
               )}
 
               {!platforms.meta && platforms.tiktok && (
                 <p className="allocationText">
-                  TikTok will receive the full campaign budget.
+                  TikTok will receive the full {budget.mode === "DAILY" ? "daily" : "total"}{" "}
+                  campaign budget.
                 </p>
               )}
 
@@ -767,12 +812,14 @@ export default function NewCampaignPage() {
                       {platforms.tiktok && tiktokMinimum && (
                         <div className="reviewRow">
                           <span>
-                            TikTok minimum for {budget.durationDays} day
-                            {budget.durationDays === 1 ? "" : "s"}
+                            {budget.mode === "DAILY"
+                              ? "TikTok minimum per day"
+                              : `TikTok minimum for ${budget.durationDays} day${budget.durationDays === 1 ? "" : "s"}`}
                           </span>
                           <strong>
                             {tiktokMinimum.currency}{" "}
                             {Number(tiktokMinimum.amount).toFixed(2)}
+                            {budget.mode === "DAILY" ? "/day" : ""}
                           </strong>
                         </div>
                       )}
@@ -948,11 +995,28 @@ export default function NewCampaignPage() {
                 </strong>
               </div>
               <div className="reviewRow">
-                <span>Total budget</span>
+                <span>Budget type</span>
                 <strong>
-                  {currency} {budget.total}
+                  {budget.mode === "DAILY" ? "Daily" : "Total"}
                 </strong>
               </div>
+              <div className="reviewRow">
+                <span>
+                  {budget.mode === "DAILY" ? "Daily budget" : "Total budget"}
+                </span>
+                <strong>
+                  {currency} {budget.amount}
+                  {budget.mode === "DAILY" ? "/day" : ""}
+                </strong>
+              </div>
+              {budget.mode === "DAILY" && (
+                <div className="reviewRow">
+                  <span>Estimated campaign spend</span>
+                  <strong>
+                    {currency} {Number(projectedTotal).toFixed(2)}
+                  </strong>
+                </div>
+              )}
               <div className="reviewRow">
                 <span>Duration</span>
                 <strong>{budget.durationDays} days</strong>
@@ -966,6 +1030,7 @@ export default function NewCampaignPage() {
                   <span>Meta</span>
                   <strong>
                     {currency} {expectedMetaBudget}
+                    {budget.mode === "DAILY" ? "/day" : ""}
                   </strong>
                 </div>
               )}
@@ -974,6 +1039,7 @@ export default function NewCampaignPage() {
                   <span>TikTok</span>
                   <strong>
                     {currency} {expectedTikTokBudget}
+                    {budget.mode === "DAILY" ? "/day" : ""}
                   </strong>
                 </div>
               )}
