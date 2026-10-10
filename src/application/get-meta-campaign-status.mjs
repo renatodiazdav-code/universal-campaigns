@@ -32,22 +32,10 @@ export async function getMetaCampaignStatus({
         connection?.setup?.adAccount?.id,
     });
 
-  const [
-    campaign,
-    adSet,
-    ad,
-  ] = await Promise.all([
-    meta.getCampaign(
-      metaExecution.campaignId
-    ),
-
-    meta.getAdSet(
-      metaExecution.adSetId
-    ),
-
-    meta.getAd(
-      metaExecution.adId
-    ),
+  const [campaign, adSet, ad] = await Promise.all([
+    meta.getCampaign(metaExecution.campaignId),
+    meta.getAdSet(metaExecution.adSetId),
+    meta.getAd(metaExecution.adId),
   ]);
 
   return {
@@ -57,18 +45,20 @@ export async function getMetaCampaignStatus({
       id: campaign.id,
       name: campaign.name,
       status: campaign.status,
-      effectiveStatus:
-        campaign.effective_status,
+      effectiveStatus: campaign.effective_status,
     },
 
     adSet: {
       id: adSet.id,
       name: adSet.name,
       status: adSet.status,
-      effectiveStatus:
-        adSet.effective_status,
+      effectiveStatus: adSet.effective_status,
       startTime: adSet.start_time ?? null,
       endTime: adSet.end_time ?? null,
+      dailyBudget:
+        adSet.daily_budget != null
+          ? Number(adSet.daily_budget)
+          : null,
       lifetimeBudget:
         adSet.lifetime_budget != null
           ? Number(adSet.lifetime_budget)
@@ -79,8 +69,7 @@ export async function getMetaCampaignStatus({
       id: ad.id,
       name: ad.name,
       status: ad.status,
-      effectiveStatus:
-        ad.effective_status,
+      effectiveStatus: ad.effective_status,
     },
 
     checkedAt: new Date().toISOString(),
