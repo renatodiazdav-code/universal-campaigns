@@ -98,6 +98,12 @@ export async function executeMetaCampaign({
       accessToken: connection.accessToken,
     });
 
+  const selectedInstagramAccount =
+    campaign.platforms?.meta?.instagram &&
+    connection.identity?.instagram?.mode === "INSTAGRAM_ACCOUNT"
+      ? connection.identity.instagram.account ?? null
+      : null;
+
   const created = {
     campaignId: null,
     adSetId: null,
@@ -154,6 +160,7 @@ export async function executeMetaCampaign({
       destinationUrl: metaPlan.creative.destinationUrl,
       imageUrl: metaPlan.creative.imageUrl,
       callToAction: metaPlan.creative.callToAction,
+      instagramActorId: selectedInstagramAccount?.id ?? null,
     });
 
     created.creativeId = creative.id;
@@ -207,6 +214,13 @@ export async function executeMetaCampaign({
           id: page.id,
           name: page.name,
         },
+        instagramIdentity: selectedInstagramAccount
+          ? {
+              id: selectedInstagramAccount.id,
+              username: selectedInstagramAccount.username ?? null,
+              name: selectedInstagramAccount.name ?? null,
+            }
+          : null,
         budgetMode: schedule.budgetMode,
         dailyBudget: schedule.dailyBudget,
         lifetimeBudget: schedule.lifetimeBudget,
