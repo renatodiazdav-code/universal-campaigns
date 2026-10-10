@@ -53,6 +53,7 @@ export function buildMetaCampaignPlan(campaign) {
       headline: campaign.creative.headline,
       destinationUrl: campaign.creative.destinationUrl,
       imageUrl: campaign.product.imageUrl,
+      callToAction: campaign.creative.callToAction,
     },
 
     sourceCampaignVersion: campaign.version,
