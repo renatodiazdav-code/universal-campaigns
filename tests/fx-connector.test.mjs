@@ -5,7 +5,7 @@ import {
   getExchangeRate,
 } from "../src/connectors/fx/frankfurter.mjs";
 
-test("reads an exchange rate from Frankfurter", async () => {
+test("reads an exchange rate from Frankfurter v2", async () => {
   let requestedUrl = "";
 
   const fetchImpl = async (url) => {
@@ -16,12 +16,10 @@ test("reads an exchange rate from Frankfurter", async () => {
       status: 200,
       async json() {
         return {
-          amount: 1,
-          base: "USD",
           date: "2026-10-10",
-          rates: {
-            PEN: 3.45,
-          },
+          base: "USD",
+          quote: "PEN",
+          rate: 3.45,
         };
       },
     };
@@ -41,15 +39,11 @@ test("reads an exchange rate from Frankfurter", async () => {
     "api.frankfurter.dev"
   );
   assert.equal(
-    url.searchParams.get("base"),
-    "USD"
-  );
-  assert.equal(
-    url.searchParams.get("symbols"),
-    "PEN"
+    url.pathname,
+    "/v2/rate/usd/pen"
   );
   assert.equal(result.rate, 3.45);
-  assert.equal(result.source, "FRANKFURTER");
+  assert.equal(result.source, "FRANKFURTER_V2");
 });
 
 test("returns an identity rate for the same currency", async () => {
