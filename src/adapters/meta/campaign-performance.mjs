@@ -5,6 +5,20 @@ const PURCHASE_ACTION_TYPES = [
   "onsite_conversion.purchase",
 ];
 
+const PUBLISHER_PLATFORM_LABELS = {
+  facebook: "Facebook",
+  instagram: "Instagram",
+  messenger: "Messenger",
+  audience_network: "Audience Network",
+};
+
+const PUBLISHER_PLATFORM_ORDER = [
+  "facebook",
+  "instagram",
+  "messenger",
+  "audience_network",
+];
+
 function toFiniteNumber(value, fallback = 0) {
   const number = Number(value);
 
@@ -85,4 +99,36 @@ export function normalizeMetaCampaignInsights(insights) {
     dateStart: row.date_start ?? null,
     dateStop: row.date_stop ?? null,
   };
+}
+
+export function normalizeMetaPublisherBreakdown(insights) {
+  if (!Array.isArray(insights)) {
+    return [];
+  }
+
+  return insights
+    .filter((row) => row?.publisher_platform)
+    .map((row) => ({
+      id: row.publisher_platform,
+      name:
+        PUBLISHER_PLATFORM_LABELS[
+          row.publisher_platform
+        ] ?? row.publisher_platform,
+      metrics: normalizeMetaCampaignInsights(row),
+    }))
+    .sort((a, b) => {
+      const aIndex =
+        PUBLISHER_PLATFORM_ORDER.indexOf(a.id);
+      const bIndex =
+        PUBLISHER_PLATFORM_ORDER.indexOf(b.id);
+
+      const safeA = aIndex === -1
+        ? Number.MAX_SAFE_INTEGER
+        : aIndex;
+      const safeB = bIndex === -1
+        ? Number.MAX_SAFE_INTEGER
+        : bIndex;
+
+      return safeA - safeB;
+    });
 }
