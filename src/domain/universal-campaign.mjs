@@ -1,4 +1,10 @@
 const BUDGET_MODES = new Set(["TOTAL", "DAILY"]);
+const CALL_TO_ACTIONS = new Set([
+  "SHOP_NOW",
+  "LEARN_MORE",
+  "GET_OFFER",
+  "SIGN_UP",
+]);
 
 function toPositiveNumber(value, label) {
   const number = Number(value);
@@ -42,8 +48,6 @@ export function createUniversalCampaign(input) {
     "Campaign duration"
   );
 
-  // New campaigns use budget.amount. Legacy campaigns/requests used
-  // budget.total, so keep accepting it as a TOTAL budget input.
   const budgetAmount = toPositiveNumber(
     input.budget?.amount ?? input.budget?.total,
     "Budget"
@@ -62,6 +66,16 @@ export function createUniversalCampaign(input) {
 
   if (!input.creative?.type) {
     throw new Error("Creative type is required");
+  }
+
+  const callToAction = String(
+    input.creative?.callToAction ?? "SHOP_NOW"
+  ).toUpperCase();
+
+  if (!CALL_TO_ACTIONS.has(callToAction)) {
+    throw new Error(
+      `Unsupported call to action: ${callToAction}`
+    );
   }
 
   const metaBudget = Number(
@@ -142,8 +156,6 @@ export function createUniversalCampaign(input) {
     budget: {
       mode: budgetMode,
       amount: budgetAmount,
-      // total remains the maximum expected campaign spend so older
-      // readers can still show a sensible total.
       total: projectedTotal,
       projectedTotal,
       currency: input.budget.currency,
@@ -151,8 +163,6 @@ export function createUniversalCampaign(input) {
 
       allocation: {
         mode: input.budget.allocation?.mode ?? "MANUAL",
-        // Allocation values use the same unit as budget.amount:
-        // TOTAL amounts for TOTAL mode, per-day amounts for DAILY.
         meta: metaBudget,
         tiktok: tiktokBudget,
       },
@@ -181,6 +191,7 @@ export function createUniversalCampaign(input) {
         input.creative.destinationUrl ??
         input.product.destinationUrl ??
         null,
+      callToAction,
     },
 
     status: "DRAFT",
