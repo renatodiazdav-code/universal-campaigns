@@ -9,6 +9,9 @@ function createInput({
   amount = 100,
   meta = 60,
   tiktok = 40,
+  gender = "ALL",
+  facebook = true,
+  instagram = true,
 } = {}) {
   return {
     name: "Test Sneakers Campaign",
@@ -29,7 +32,7 @@ function createInput({
       countries: ["PE"],
       ageMin: 18,
       ageMax: 35,
-      gender: "ALL",
+      gender,
     },
 
     budget: {
@@ -48,8 +51,8 @@ function createInput({
     platforms: {
       meta: {
         enabled: true,
-        facebook: true,
-        instagram: true,
+        facebook,
+        instagram,
       },
 
       tiktok: {
@@ -150,6 +153,11 @@ test("executes a TOTAL Universal Campaign with Meta lifetime budget", async () =
   assert.equal(calls[1].input.budgetMode, "TOTAL");
   assert.equal(calls[1].input.lifetimeBudget, 6000);
   assert.equal(calls[1].input.dailyBudget, null);
+  assert.equal(calls[1].input.gender, "ALL");
+  assert.deepEqual(
+    calls[1].input.publisherPlatforms,
+    ["FACEBOOK", "INSTAGRAM"]
+  );
   assert.equal(
     calls[1].input.startTime,
     "2026-10-10T12:00:00.000Z"
@@ -164,6 +172,11 @@ test("executes a TOTAL Universal Campaign with Meta lifetime budget", async () =
   assert.equal(result.configuration.budgetMode, "TOTAL");
   assert.equal(result.configuration.lifetimeBudget, 6000);
   assert.equal(result.configuration.dailyBudget, null);
+  assert.equal(result.configuration.audience.gender, "ALL");
+  assert.deepEqual(
+    result.configuration.placements,
+    ["FACEBOOK", "INSTAGRAM"]
+  );
 });
 
 test("executes a DAILY Universal Campaign with Meta daily budget and an end date", async () => {
@@ -196,4 +209,37 @@ test("executes a DAILY Universal Campaign with Meta daily budget and an end date
   assert.equal(result.configuration.budgetMode, "DAILY");
   assert.equal(result.configuration.dailyBudget, 3000);
   assert.equal(result.configuration.lifetimeBudget, null);
+});
+
+test("passes gender and selected Meta publishers into the ad set", async () => {
+  const campaign = createUniversalCampaign(
+    createInput({
+      amount: 50,
+      meta: 50,
+      tiktok: 0,
+      gender: "MALE",
+      facebook: false,
+      instagram: true,
+    })
+  );
+  const calls = [];
+
+  const result = await executeMetaCampaign({
+    campaign,
+    connection: createConnection(),
+    metaClient: createFakeMeta(calls),
+    now: new Date("2026-10-10T12:00:00.000Z"),
+  });
+
+  assert.equal(result.status, "CREATED");
+  assert.equal(calls[1].input.gender, "MALE");
+  assert.deepEqual(
+    calls[1].input.publisherPlatforms,
+    ["INSTAGRAM"]
+  );
+  assert.equal(result.configuration.audience.gender, "MALE");
+  assert.deepEqual(
+    result.configuration.placements,
+    ["INSTAGRAM"]
+  );
 });
