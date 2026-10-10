@@ -5,9 +5,10 @@ function toMinorUnits(amount) {
   return Math.round(Number(amount) * 100);
 }
 
-function calculateDailyBudget({
+function buildLifetimeSchedule({
   totalBudget,
   durationDays,
+  now = new Date(),
 }) {
   if (!totalBudget || totalBudget <= 0) {
     throw new Error("Meta campaign budget must be greater than zero");
@@ -17,16 +18,29 @@ function calculateDailyBudget({
     throw new Error("Campaign duration must be greater than zero");
   }
 
-  const dailyBudget =
-    Number(totalBudget) / Number(durationDays);
+  const start = new Date(now);
 
-  return toMinorUnits(dailyBudget);
+  if (Number.isNaN(start.getTime())) {
+    throw new Error("Invalid campaign start time");
+  }
+
+  const end = new Date(
+    start.getTime() +
+      Number(durationDays) * 24 * 60 * 60 * 1000
+  );
+
+  return {
+    lifetimeBudget: toMinorUnits(totalBudget),
+    startTime: start.toISOString(),
+    endTime: end.toISOString(),
+  };
 }
 
 export async function executeMetaCampaign({
   campaign,
   connection,
   metaClient = null,
+  now = new Date(),
 }) {
   if (!campaign) {
     throw new Error("Missing Universal Campaign");
@@ -55,11 +69,11 @@ export async function executeMetaCampaign({
   const metaPlan = buildMetaCampaignPlan(campaign);
 
   const meta =
-  metaClient ??
-  createMetaClient({
-    adAccountId: adAccount.id,
-    accessToken: connection.accessToken,
-  });
+    metaClient ??
+    createMetaClient({
+      adAccountId: adAccount.id,
+      accessToken: connection.accessToken,
+    });
 
   const created = {
     campaignId: null,
@@ -77,15 +91,18 @@ export async function executeMetaCampaign({
 
     created.campaignId = metaCampaign.id;
 
-    const dailyBudget = calculateDailyBudget({
+    const schedule = buildLifetimeSchedule({
       totalBudget: metaPlan.budget.allocated,
       durationDays: campaign.budget.durationDays,
+      now,
     });
 
     const adSet = await meta.createAdSet({
       name: `${campaign.name} - Ad Set`,
       campaignId: metaCampaign.id,
-      dailyBudget,
+      lifetimeBudget: schedule.lifetimeBudget,
+      startTime: schedule.startTime,
+      endTime: schedule.endTime,
 
       countries: metaPlan.audience.countries,
       ageMin: metaPlan.audience.ageMin,
@@ -153,7 +170,10 @@ export async function executeMetaCampaign({
           id: page.id,
           name: page.name,
         },
-        dailyBudget,
+        budgetMode: "LIFETIME",
+        lifetimeBudget: schedule.lifetimeBudget,
+        startTime: schedule.startTime,
+        endTime: schedule.endTime,
         currency: metaPlan.budget.currency,
       },
     };
