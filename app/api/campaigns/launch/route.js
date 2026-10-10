@@ -2,12 +2,31 @@ import { createUniversalCampaign } from "../../../../src/domain/universal-campai
 import { executeMetaCampaign } from "../../../../src/application/execute-meta-campaign.mjs";
 import { loadMetaConnection } from "../../../../src/application/meta-connection-store.mjs";
 import { campaignStore } from "../../../../src/application/campaign-store.mjs";
+import { checkBudgetCompatibility } from "../../../../src/application/check-budget-compatibility.mjs";
 
 export async function POST(request) {
   try {
     const campaignInput = await request.json();
 
     const campaign = createUniversalCampaign(campaignInput);
+
+    const compatibility =
+      await checkBudgetCompatibility(campaign);
+
+    if (!compatibility.eligible) {
+      return Response.json(
+        {
+          status: "ERROR",
+          error:
+            compatibility.issues[0]?.message ||
+            "Campaign budget is not compatible with the selected platforms",
+          compatibility,
+        },
+        {
+          status: 400,
+        }
+      );
+    }
 
     if (!campaign.platforms?.meta?.enabled) {
       return Response.json(
@@ -26,6 +45,7 @@ export async function POST(request) {
         {
           status: "ERROR",
           error: "TikTok execution is not implemented yet",
+          compatibility,
         },
         {
           status: 400,
@@ -110,6 +130,7 @@ export async function POST(request) {
     return Response.json({
       status: "CREATED",
       campaign,
+      compatibility,
       storedCampaign,
 
       platforms: {
@@ -122,8 +143,6 @@ export async function POST(request) {
           "All Meta advertising objects were created paused. No ad spend has been activated.",
       },
     });
-
-
   } catch (error) {
     console.error("Campaign launch error:", error);
 
