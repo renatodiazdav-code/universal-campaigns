@@ -55,6 +55,27 @@ function getPlatformLabel(campaign) {
     return "—";
 }
 
+function formatCampaignBudget(budget) {
+    if (!budget) {
+        return "—";
+    }
+
+    const currency = budget.currency || "PEN";
+    const mode = budget.mode || "TOTAL";
+
+    if (mode === "DAILY") {
+        const dailyAmount = budget.amount ?? 0;
+        const projectedTotal =
+            budget.projectedTotal ?? budget.total ?? 0;
+
+        return `${currency} ${Number(dailyAmount).toFixed(2)}/day · ${budget.durationDays} days · est. ${currency} ${Number(projectedTotal).toFixed(2)}`;
+    }
+
+    const totalAmount = budget.amount ?? budget.total;
+
+    return `${currency} ${Number(totalAmount).toFixed(2)} total`;
+}
+
 export default function CampaignsPage() {
     const [campaigns, setCampaigns] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -270,9 +291,9 @@ export default function CampaignsPage() {
                             <div className="reviewRow">
                                 <span>Budget</span>
                                 <strong>
-                                    {campaign.input?.budget
-                                        ? `${campaign.input.budget.currency} ${campaign.input.budget.total}`
-                                        : "—"}
+                                    {formatCampaignBudget(
+                                        campaign.input?.budget
+                                    )}
                                 </strong>
                             </div>
 
