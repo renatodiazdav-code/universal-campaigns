@@ -1,8 +1,8 @@
-import { loadMetaConnection } from "../../../../../../src/application/meta-connection-store.mjs";
+import { loadMetaConnection } from "../../../../../src/application/meta-connection-store.mjs";
 import {
   getMetaPixelDetails,
   getMetaPixelEventStats,
-} from "../../../../../../src/connectors/meta/pixel-health.mjs";
+} from "../../../../../src/connectors/meta/pixel-health.mjs";
 
 const WINDOW_DAYS = 7;
 
