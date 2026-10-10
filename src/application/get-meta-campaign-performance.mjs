@@ -1,5 +1,8 @@
 import { getMetaCampaignInsights } from "../connectors/meta/insights.mjs";
-import { normalizeMetaCampaignInsights } from "../adapters/meta/campaign-performance.mjs";
+import {
+  normalizeMetaCampaignInsights,
+  normalizeMetaPublisherBreakdown,
+} from "../adapters/meta/campaign-performance.mjs";
 
 export async function getMetaCampaignPerformance({
   storedCampaign,
@@ -17,18 +20,40 @@ export async function getMetaCampaignPerformance({
     throw new Error("Meta is not connected");
   }
 
-  const insights = metaClient
-    ? await metaClient.getCampaignInsights(campaignId)
-    : await getMetaCampaignInsights({
+  async function readInsights(options = {}) {
+    if (metaClient) {
+      return metaClient.getCampaignInsights(
         campaignId,
-        accessToken: connection.accessToken,
-      });
+        options
+      );
+    }
+
+    return getMetaCampaignInsights({
+      campaignId,
+      accessToken: connection.accessToken,
+      ...options,
+    });
+  }
+
+  const [insights, publisherInsights] =
+    await Promise.all([
+      readInsights(),
+      readInsights({
+        breakdowns: ["publisher_platform"],
+      }),
+    ]);
 
   return {
     platform: "META",
     campaignId,
     metrics:
       normalizeMetaCampaignInsights(insights),
+    breakdowns: {
+      publisherPlatform:
+        normalizeMetaPublisherBreakdown(
+          publisherInsights
+        ),
+    },
     checkedAt: new Date().toISOString(),
   };
 }
