@@ -149,7 +149,7 @@ export function createMetaClient({
 
   async function getCampaign(campaignId) {
     const params = new URLSearchParams({
-      fields: "id,name,status,objective",
+      fields: "id,name,status,effective_status,objective",
       access_token: accessToken,
     });
 
@@ -162,6 +162,49 @@ export function createMetaClient({
     if (!response.ok) {
       throw new Error(
         `Meta get campaign failed: ${JSON.stringify(result)}`
+      );
+    }
+
+    return result;
+  }
+
+  async function getAdSet(adSetId) {
+    const params = new URLSearchParams({
+      fields:
+        "id,name,status,effective_status,optimization_goal",
+      access_token: accessToken,
+    });
+
+    const response = await fetch(
+      `${META_GRAPH_URL}/${adSetId}?${params}`
+    );
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        `Meta get ad set failed: ${JSON.stringify(result)}`
+      );
+    }
+
+    return result;
+  }
+
+  async function getAd(adId) {
+    const params = new URLSearchParams({
+      fields: "id,name,status,effective_status",
+      access_token: accessToken,
+    });
+
+    const response = await fetch(
+      `${META_GRAPH_URL}/${adId}?${params}`
+    );
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        `Meta get ad failed: ${JSON.stringify(result)}`
       );
     }
 
@@ -351,8 +394,13 @@ export function createMetaClient({
 
     createCampaign,
     getCampaign,
+
     createAdSet,
+    getAdSet,
+
     createAdCreative,
+
     createAd,
+    getAd,
   };
 }
