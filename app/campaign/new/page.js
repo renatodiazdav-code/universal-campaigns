@@ -2,6 +2,10 @@
 
 import { useEffect, useMemo, useState } from "react";
 
+function roundMoney(value) {
+  return Math.round((Number(value) + Number.EPSILON) * 100) / 100;
+}
+
 export default function NewCampaignPage() {
   const [products, setProducts] = useState([]);
   const [selectedProductId, setSelectedProductId] = useState(null);
@@ -29,6 +33,16 @@ export default function NewCampaignPage() {
     tiktok: 40,
   });
 
+  const [allocationMode, setAllocationMode] = useState("AUTO");
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [autoAllocation, setAutoAllocation] = useState(null);
+  const [autoAllocationLoading, setAutoAllocationLoading] = useState(false);
+  const [autoAllocationError, setAutoAllocationError] = useState("");
+
+  const [budgetCompatibility, setBudgetCompatibility] = useState(null);
+  const [budgetCompatibilityLoading, setBudgetCompatibilityLoading] = useState(false);
+  const [budgetCompatibilityError, setBudgetCompatibilityError] = useState("");
+
   const [creative, setCreative] = useState({
     primaryText: "",
     headline: "",
@@ -39,10 +53,6 @@ export default function NewCampaignPage() {
   const [error, setError] = useState("");
   const [metaSetup, setMetaSetup] = useState(null);
   const [metaSetupLoading, setMetaSetupLoading] = useState(true);
-
-  const [budgetCompatibility, setBudgetCompatibility] = useState(null);
-  const [budgetCompatibilityLoading, setBudgetCompatibilityLoading] = useState(false);
-  const [budgetCompatibilityError, setBudgetCompatibilityError] = useState("");
 
   const [generatingPlan, setGeneratingPlan] = useState(false);
   const [planResult, setPlanResult] = useState(null);
@@ -108,6 +118,7 @@ export default function NewCampaignPage() {
 
   const currency = selectedProduct?.currency || "PEN";
   const hasSelectedPlatform = platforms.meta || platforms.tiktok;
+  const hasBothPlatforms = platforms.meta && platforms.tiktok;
 
   useEffect(() => {
     if (!selectedProduct) {
@@ -121,35 +132,65 @@ export default function NewCampaignPage() {
     });
   }, [selectedProduct]);
 
-  const expectedMetaBudget =
-    !platforms.meta
-      ? 0
-      : !platforms.tiktok
-        ? budget.amount
-        : budget.meta;
-
-  const expectedTikTokBudget =
-    !platforms.tiktok
-      ? 0
-      : !platforms.meta
-        ? budget.amount
-        : budget.tiktok;
-
   const projectedTotal =
     budget.mode === "DAILY"
       ? Number(budget.amount) * Number(budget.durationDays)
       : Number(budget.amount);
 
-  const allocationMatches =
+  const manualMetaBudget =
+    !platforms.meta
+      ? 0
+      : !platforms.tiktok
+        ? Number(budget.amount)
+        : Number(budget.meta);
+
+  const manualTikTokBudget =
+    !platforms.tiktok
+      ? 0
+      : !platforms.meta
+        ? Number(budget.amount)
+        : Number(budget.tiktok);
+
+  const autoMetaBudget = Number(
+    autoAllocation?.allocation?.meta ?? 0
+  );
+
+  const autoTikTokBudget = Number(
+    autoAllocation?.allocation?.tiktok ?? 0
+  );
+
+  const expectedMetaBudget =
+    allocationMode === "AUTO"
+      ? autoMetaBudget
+      : manualMetaBudget;
+
+  const expectedTikTokBudget =
+    allocationMode === "AUTO"
+      ? autoTikTokBudget
+      : manualTikTokBudget;
+
+  const manualAllocationMatches =
     Math.abs(
-      expectedMetaBudget + expectedTikTokBudget - budget.amount
+      manualMetaBudget + manualTikTokBudget - Number(budget.amount)
     ) < 0.000001;
 
-  const basicBudgetIsValid =
-    budget.amount > 0 &&
-    budget.durationDays > 0 &&
-    allocationMatches &&
+  const basicBudgetInputIsValid =
+    Number(budget.amount) > 0 &&
+    Number(budget.durationDays) > 0 &&
     hasSelectedPlatform;
+
+  function buildPlatformsInput() {
+    return {
+      meta: {
+        enabled: platforms.meta,
+        facebook: platforms.meta && platforms.facebook,
+        instagram: platforms.meta && platforms.instagram,
+      },
+      tiktok: {
+        enabled: platforms.tiktok,
+      },
+    };
+  }
 
   function buildCampaignInput() {
     if (!selectedProduct) {
@@ -183,22 +224,13 @@ export default function NewCampaignPage() {
         currency,
         durationDays: Number(budget.durationDays),
         allocation: {
-          mode: "MANUAL",
+          mode: allocationMode,
           meta: platforms.meta ? Number(expectedMetaBudget) : 0,
           tiktok: platforms.tiktok ? Number(expectedTikTokBudget) : 0,
         },
       },
 
-      platforms: {
-        meta: {
-          enabled: platforms.meta,
-          facebook: platforms.meta && platforms.facebook,
-          instagram: platforms.meta && platforms.instagram,
-        },
-        tiktok: {
-          enabled: platforms.tiktok,
-        },
-      },
+      platforms: buildPlatformsInput(),
 
       creative: {
         type: "IMAGE",
@@ -210,8 +242,93 @@ export default function NewCampaignPage() {
   }
 
   useEffect(() => {
-    if (step < 3 || !selectedProduct || !hasSelectedPlatform) {
+    if (
+      step < 3 ||
+      allocationMode !== "AUTO" ||
+      !selectedProduct ||
+      !hasSelectedPlatform ||
+      !basicBudgetInputIsValid
+    ) {
+      setAutoAllocation(null);
+      setAutoAllocationError("");
+      return;
+    }
+
+    const controller = new AbortController();
+    const timer = setTimeout(async () => {
+      setAutoAllocationLoading(true);
+      setAutoAllocationError("");
+
+      try {
+        const response = await fetch("/api/budget-allocation", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            budget: {
+              mode: budget.mode,
+              amount: Number(budget.amount),
+              currency,
+              durationDays: Number(budget.durationDays),
+            },
+            platforms: buildPlatformsInput(),
+          }),
+          signal: controller.signal,
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(
+            data.error || "Could not calculate budget distribution"
+          );
+        }
+
+        setAutoAllocation(data);
+      } catch (error) {
+        if (error.name !== "AbortError") {
+          setAutoAllocation(null);
+          setAutoAllocationError(error.message);
+        }
+      } finally {
+        if (!controller.signal.aborted) {
+          setAutoAllocationLoading(false);
+        }
+      }
+    }, 350);
+
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [
+    step,
+    allocationMode,
+    selectedProduct,
+    hasSelectedPlatform,
+    basicBudgetInputIsValid,
+    platforms.meta,
+    platforms.facebook,
+    platforms.instagram,
+    platforms.tiktok,
+    budget.mode,
+    budget.amount,
+    budget.durationDays,
+    currency,
+  ]);
+
+  useEffect(() => {
+    if (
+      step < 3 ||
+      allocationMode !== "MANUAL" ||
+      !selectedProduct ||
+      !hasSelectedPlatform ||
+      !basicBudgetInputIsValid ||
+      !manualAllocationMatches
+    ) {
       setBudgetCompatibility(null);
+      setBudgetCompatibilityError("");
       return;
     }
 
@@ -221,16 +338,24 @@ export default function NewCampaignPage() {
       setBudgetCompatibilityError("");
 
       try {
-        const input = buildCampaignInput();
-
         const response = await fetch("/api/budget-compatibility", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            budget: input.budget,
-            platforms: input.platforms,
+            budget: {
+              mode: budget.mode,
+              amount: Number(budget.amount),
+              currency,
+              durationDays: Number(budget.durationDays),
+              allocation: {
+                mode: "MANUAL",
+                meta: manualMetaBudget,
+                tiktok: manualTikTokBudget,
+              },
+            },
+            platforms: buildPlatformsInput(),
           }),
           signal: controller.signal,
         });
@@ -262,16 +387,15 @@ export default function NewCampaignPage() {
     };
   }, [
     step,
+    allocationMode,
     selectedProduct,
     hasSelectedPlatform,
+    basicBudgetInputIsValid,
+    manualAllocationMatches,
     platforms.meta,
     platforms.facebook,
     platforms.instagram,
     platforms.tiktok,
-    audience.country,
-    audience.ageMin,
-    audience.ageMax,
-    audience.gender,
     budget.mode,
     budget.amount,
     budget.durationDays,
@@ -281,13 +405,37 @@ export default function NewCampaignPage() {
   ]);
 
   const budgetIsCompatible =
-    basicBudgetIsValid &&
-    !budgetCompatibilityLoading &&
-    !budgetCompatibilityError &&
-    budgetCompatibility?.eligible === true;
+    basicBudgetInputIsValid &&
+    (allocationMode === "AUTO"
+      ? !autoAllocationLoading &&
+        !autoAllocationError &&
+        autoAllocation?.eligible === true
+      : manualAllocationMatches &&
+        !budgetCompatibilityLoading &&
+        !budgetCompatibilityError &&
+        budgetCompatibility?.eligible === true);
 
-  const tiktokMinimum =
+  const manualTikTokMinimum =
     budgetCompatibility?.platforms?.tiktok?.minimumRequired;
+
+  function changeAllocationMode(nextMode) {
+    if (nextMode === "MANUAL" && hasBothPlatforms) {
+      const fallbackMeta = roundMoney(Number(budget.amount) / 2);
+      const fallbackTikTok = roundMoney(
+        Number(budget.amount) - fallbackMeta
+      );
+
+      setBudget((current) => ({
+        ...current,
+        meta:
+          autoAllocation?.allocation?.meta ?? fallbackMeta,
+        tiktok:
+          autoAllocation?.allocation?.tiktok ?? fallbackTikTok,
+      }));
+    }
+
+    setAllocationMode(nextMode);
+  }
 
   async function generateCampaignPlan() {
     const campaignInput = buildCampaignInput();
@@ -348,8 +496,8 @@ export default function NewCampaignPage() {
       if (!response.ok) {
         throw new Error(
           data?.platforms?.meta?.error ||
-          data.error ||
-          "Could not launch campaign"
+            data.error ||
+            "Could not launch campaign"
         );
       }
 
@@ -373,6 +521,7 @@ export default function NewCampaignPage() {
       instagram: true,
       tiktok: false,
     }));
+    setAllocationMode("AUTO");
   }
 
   return (
@@ -382,9 +531,7 @@ export default function NewCampaignPage() {
           Relay
         </a>
 
-        <span className="stepLabel">
-          Step {step} of 5
-        </span>
+        <span className="stepLabel">Step {step} of 5</span>
       </header>
 
       <section className="campaignContent">
@@ -510,6 +657,7 @@ export default function NewCampaignPage() {
                       instagram: enabled,
                     };
                   });
+                  setAllocationMode("AUTO");
                 }}
               >
                 <div>
@@ -528,12 +676,13 @@ export default function NewCampaignPage() {
               <button
                 type="button"
                 className={`platformCard ${platforms.tiktok ? "selected" : ""}`}
-                onClick={() =>
+                onClick={() => {
                   setPlatforms((current) => ({
                     ...current,
                     tiktok: !current.tiktok,
-                  }))
-                }
+                  }));
+                  setAllocationMode("AUTO");
+                }}
               >
                 <div>
                   <strong>TikTok</strong>
@@ -708,83 +857,84 @@ export default function NewCampaignPage() {
                 <p className="allocationText">
                   Estimated spend over {budget.durationDays} day
                   {budget.durationDays === 1 ? "" : "s"}: {currency}{" "}
-                  {Number(projectedTotal).toFixed(2)}. Relay will still set an
-                  end date so the campaign does not run indefinitely.
-                </p>
-              )}
-
-              {platforms.meta && platforms.tiktok && (
-                <div className="fieldRow">
-                  <label className="field">
-                    <span>
-                      Meta {budget.mode === "DAILY" ? "daily" : "total"}{" "}
-                      budget ({currency})
-                    </span>
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={budget.meta}
-                      onChange={(event) =>
-                        setBudget((current) => ({
-                          ...current,
-                          meta: Number(event.target.value),
-                        }))
-                      }
-                    />
-                  </label>
-
-                  <label className="field">
-                    <span>
-                      TikTok {budget.mode === "DAILY" ? "daily" : "total"}{" "}
-                      budget ({currency})
-                    </span>
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={budget.tiktok}
-                      onChange={(event) =>
-                        setBudget((current) => ({
-                          ...current,
-                          tiktok: Number(event.target.value),
-                        }))
-                      }
-                    />
-                  </label>
-                </div>
-              )}
-
-              {platforms.meta && !platforms.tiktok && (
-                <p className="allocationText">
-                  Meta will receive the full {budget.mode === "DAILY" ? "daily" : "total"}{" "}
-                  campaign budget.
-                </p>
-              )}
-
-              {!platforms.meta && platforms.tiktok && (
-                <p className="allocationText">
-                  TikTok will receive the full {budget.mode === "DAILY" ? "daily" : "total"}{" "}
-                  campaign budget.
+                  {Number(projectedTotal).toFixed(2)}. Relay will set an end
+                  date so the campaign does not run indefinitely.
                 </p>
               )}
 
               <div className="reviewSection">
                 <h2>Platform compatibility</h2>
 
-                {budgetCompatibilityLoading && (
+                {allocationMode === "AUTO" && autoAllocationLoading && (
                   <p className="reviewDescription">
-                    Checking platform requirements...
+                    Relay is checking the selected platforms...
                   </p>
                 )}
 
-                {budgetCompatibilityError && (
-                  <p className="errorText">
-                    {budgetCompatibilityError}
-                  </p>
+                {allocationMode === "AUTO" && autoAllocationError && (
+                  <p className="errorText">{autoAllocationError}</p>
                 )}
 
-                {!budgetCompatibilityLoading &&
+                {allocationMode === "AUTO" &&
+                  !autoAllocationLoading &&
+                  autoAllocation && (
+                    <>
+                      {autoAllocation.eligible ? (
+                        <>
+                          <div className="reviewRow">
+                            <span>Budget</span>
+                            <strong>Ready</strong>
+                          </div>
+                          <p className="reviewDescription">
+                            Your budget works with the selected platforms. Relay
+                            will handle the distribution automatically.
+                          </p>
+                        </>
+                      ) : (
+                        <>
+                          <p className="errorText">
+                            {autoAllocation.message ||
+                              "This budget cannot fund the selected platforms."}
+                          </p>
+
+                          {hasBothPlatforms && (
+                            <button
+                              type="button"
+                              className="stepBackButton"
+                              onClick={selectMetaOnly}
+                            >
+                              Use Meta only
+                            </button>
+                          )}
+                        </>
+                      )}
+                    </>
+                  )}
+
+                {allocationMode === "MANUAL" &&
+                  !manualAllocationMatches && (
+                    <p className="errorText">
+                      Meta and TikTok budgets must add up to {currency}{" "}
+                      {Number(budget.amount).toFixed(2)}.
+                    </p>
+                  )}
+
+                {allocationMode === "MANUAL" &&
+                  budgetCompatibilityLoading && (
+                    <p className="reviewDescription">
+                      Checking your manual distribution...
+                    </p>
+                  )}
+
+                {allocationMode === "MANUAL" &&
+                  budgetCompatibilityError && (
+                    <p className="errorText">
+                      {budgetCompatibilityError}
+                    </p>
+                  )}
+
+                {allocationMode === "MANUAL" &&
+                  !budgetCompatibilityLoading &&
                   budgetCompatibility && (
                     <>
                       {platforms.meta && (
@@ -809,16 +959,18 @@ export default function NewCampaignPage() {
                         </div>
                       )}
 
-                      {platforms.tiktok && tiktokMinimum && (
+                      {platforms.tiktok && manualTikTokMinimum && (
                         <div className="reviewRow">
                           <span>
                             {budget.mode === "DAILY"
                               ? "TikTok minimum per day"
-                              : `TikTok minimum for ${budget.durationDays} day${budget.durationDays === 1 ? "" : "s"}`}
+                              : `TikTok minimum for ${budget.durationDays} day${
+                                  budget.durationDays === 1 ? "" : "s"
+                                }`}
                           </span>
                           <strong>
-                            {tiktokMinimum.currency}{" "}
-                            {Number(tiktokMinimum.amount).toFixed(2)}
+                            {manualTikTokMinimum.currency}{" "}
+                            {Number(manualTikTokMinimum.amount).toFixed(2)}
                             {budget.mode === "DAILY" ? "/day" : ""}
                           </strong>
                         </div>
@@ -835,24 +987,95 @@ export default function NewCampaignPage() {
 
                       {budgetCompatibility.eligible && (
                         <p className="reviewDescription">
-                          This budget is compatible with every selected platform.
+                          Your manual distribution is compatible with every
+                          selected platform.
                         </p>
                       )}
-
-                      {!budgetCompatibility.eligible &&
-                        platforms.tiktok &&
-                        platforms.meta && (
-                          <button
-                            type="button"
-                            className="stepBackButton"
-                            onClick={selectMetaOnly}
-                          >
-                            Use Meta only
-                          </button>
-                        )}
                     </>
                   )}
               </div>
+
+              {advancedOpen && (
+                <div className="advancedPanel">
+                  <div className="advancedPanelHeader">
+                    <div>
+                      <span className="creativeLabel">ADVANCED SETTINGS</span>
+                      <h2>Budget distribution</h2>
+                    </div>
+                  </div>
+
+                  {hasBothPlatforms ? (
+                    <>
+                      <label className="field">
+                        <span>Distribution</span>
+                        <select
+                          value={allocationMode}
+                          onChange={(event) =>
+                            changeAllocationMode(event.target.value)
+                          }
+                        >
+                          <option value="AUTO">Automatic by Relay</option>
+                          <option value="MANUAL">Set manually</option>
+                        </select>
+                      </label>
+
+                      {allocationMode === "AUTO" ? (
+                        <p className="reviewDescription">
+                          Relay chooses a technically valid distribution across
+                          Meta and TikTok. This v0.1 rule starts from an even
+                          split and adjusts only when a platform minimum requires
+                          it.
+                        </p>
+                      ) : (
+                        <div className="fieldRow advancedBudgetFields">
+                          <label className="field">
+                            <span>
+                              Meta {budget.mode === "DAILY" ? "daily" : "total"}{" "}
+                              budget ({currency})
+                            </span>
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={budget.meta}
+                              onChange={(event) =>
+                                setBudget((current) => ({
+                                  ...current,
+                                  meta: Number(event.target.value),
+                                }))
+                              }
+                            />
+                          </label>
+
+                          <label className="field">
+                            <span>
+                              TikTok {budget.mode === "DAILY" ? "daily" : "total"}{" "}
+                              budget ({currency})
+                            </span>
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={budget.tiktok}
+                              onChange={(event) =>
+                                setBudget((current) => ({
+                                  ...current,
+                                  tiktok: Number(event.target.value),
+                                }))
+                              }
+                            />
+                          </label>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <p className="reviewDescription">
+                      Only one platform is selected, so it receives the full
+                      campaign budget automatically.
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="campaignActions">
@@ -864,14 +1087,26 @@ export default function NewCampaignPage() {
                 Back
               </button>
 
-              <button
-                type="button"
-                className="continueButton"
-                disabled={!budgetIsCompatible}
-                onClick={() => setStep(4)}
-              >
-                Continue
-              </button>
+              <div className="campaignActionRight">
+                <button
+                  type="button"
+                  className="advancedLink"
+                  onClick={() => setAdvancedOpen((current) => !current)}
+                >
+                  {advancedOpen
+                    ? "Hide advanced settings ↑"
+                    : "Advanced settings →"}
+                </button>
+
+                <button
+                  type="button"
+                  className="continueButton"
+                  disabled={!budgetIsCompatible}
+                  onClick={() => setStep(4)}
+                >
+                  Continue
+                </button>
+              </div>
             </div>
           </>
         )}
@@ -979,10 +1214,12 @@ export default function NewCampaignPage() {
 
             <div className="reviewSection">
               <h2>Campaign</h2>
+
               <div className="reviewRow">
                 <span>Product</span>
                 <strong>{selectedProduct?.title || "—"}</strong>
               </div>
+
               <div className="reviewRow">
                 <span>Platforms</span>
                 <strong>
@@ -994,12 +1231,14 @@ export default function NewCampaignPage() {
                     .join(" + ")}
                 </strong>
               </div>
+
               <div className="reviewRow">
                 <span>Budget type</span>
                 <strong>
                   {budget.mode === "DAILY" ? "Daily" : "Total"}
                 </strong>
               </div>
+
               <div className="reviewRow">
                 <span>
                   {budget.mode === "DAILY" ? "Daily budget" : "Total budget"}
@@ -1009,6 +1248,7 @@ export default function NewCampaignPage() {
                   {budget.mode === "DAILY" ? "/day" : ""}
                 </strong>
               </div>
+
               {budget.mode === "DAILY" && (
                 <div className="reviewRow">
                   <span>Estimated campaign spend</span>
@@ -1017,15 +1257,26 @@ export default function NewCampaignPage() {
                   </strong>
                 </div>
               )}
+
               <div className="reviewRow">
                 <span>Duration</span>
                 <strong>{budget.durationDays} days</strong>
               </div>
+
+              <div className="reviewRow">
+                <span>Budget distribution</span>
+                <strong>
+                  {allocationMode === "AUTO"
+                    ? "Automatic by Relay"
+                    : "Manual"}
+                </strong>
+              </div>
             </div>
 
-            <div className="reviewSection">
-              <h2>Budget allocation</h2>
-              {platforms.meta && (
+            {allocationMode === "MANUAL" && hasBothPlatforms && (
+              <div className="reviewSection">
+                <h2>Manual allocation</h2>
+
                 <div className="reviewRow">
                   <span>Meta</span>
                   <strong>
@@ -1033,8 +1284,7 @@ export default function NewCampaignPage() {
                     {budget.mode === "DAILY" ? "/day" : ""}
                   </strong>
                 </div>
-              )}
-              {platforms.tiktok && (
+
                 <div className="reviewRow">
                   <span>TikTok</span>
                   <strong>
@@ -1042,8 +1292,8 @@ export default function NewCampaignPage() {
                     {budget.mode === "DAILY" ? "/day" : ""}
                   </strong>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
 
             {platforms.tiktok && (
               <div className="reviewSection">
