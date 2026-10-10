@@ -135,6 +135,7 @@ test("executes a Universal Campaign as a complete Meta campaign", async () => {
     campaign,
     connection,
     metaClient: fakeMeta,
+    now: new Date("2026-10-10T12:00:00.000Z"),
   });
 
   assert.equal(result.status, "CREATED");
@@ -183,6 +184,21 @@ test("executes a Universal Campaign as a complete Meta campaign", async () => {
   );
 
   assert.equal(
+    calls[1].input.lifetimeBudget,
+    6000
+  );
+
+  assert.equal(
+    calls[1].input.startTime,
+    "2026-10-10T12:00:00.000Z"
+  );
+
+  assert.equal(
+    calls[1].input.endTime,
+    "2026-10-17T12:00:00.000Z"
+  );
+
+  assert.equal(
     calls[1].input.status,
     "PAUSED"
   );
@@ -190,5 +206,20 @@ test("executes a Universal Campaign as a complete Meta campaign", async () => {
   assert.equal(
     calls[3].input.status,
     "PAUSED"
+  );
+
+  assert.equal(
+    result.configuration.budgetMode,
+    "LIFETIME"
+  );
+
+  assert.equal(
+    result.configuration.lifetimeBudget,
+    6000
+  );
+
+  assert.equal(
+    result.configuration.endTime,
+    "2026-10-17T12:00:00.000Z"
   );
 });
