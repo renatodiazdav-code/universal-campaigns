@@ -19,6 +19,7 @@ export async function getMetaCampaignInsights({
   campaignId,
   accessToken,
   datePreset = "maximum",
+  breakdowns = [],
   fetchImpl = fetch,
 }) {
   if (!campaignId) {
@@ -35,6 +36,13 @@ export async function getMetaCampaignInsights({
     action_report_time: "conversion",
     access_token: accessToken,
   });
+
+  if (breakdowns.length > 0) {
+    params.set(
+      "breakdowns",
+      breakdowns.join(",")
+    );
+  }
 
   const response = await fetchImpl(
     `${META_GRAPH_URL}/${campaignId}/insights?${params}`
