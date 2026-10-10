@@ -2,6 +2,7 @@ export function evaluateMetaBudget({
   enabled,
   allocatedBudget,
   currency,
+  budgetMode = "TOTAL",
 }) {
   if (!enabled) {
     return {
@@ -12,6 +13,7 @@ export function evaluateMetaBudget({
   }
 
   const amount = Number(allocatedBudget);
+  const mode = String(budgetMode).toUpperCase();
 
   if (!Number.isFinite(amount) || amount <= 0) {
     return {
@@ -22,6 +24,7 @@ export function evaluateMetaBudget({
       message: "Meta needs a budget greater than zero.",
       allocatedBudget: 0,
       currency,
+      budgetMode: mode,
     };
   }
 
@@ -31,6 +34,7 @@ export function evaluateMetaBudget({
     eligible: true,
     allocatedBudget: amount,
     currency,
+    budgetMode: mode,
     minimumRequired: null,
     note:
       "Relay does not apply a universal Meta minimum because Meta budget constraints can vary by account and campaign configuration.",
