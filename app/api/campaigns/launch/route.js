@@ -1,9 +1,15 @@
 import { createUniversalCampaign } from "../../../../src/domain/universal-campaign.mjs";
 import { executeMetaCampaign } from "../../../../src/application/execute-meta-campaign.mjs";
-import { loadMetaConnection } from "../../../../src/application/meta-connection-store.mjs";
+import {
+  loadMetaConnection,
+  saveMetaConnection,
+} from "../../../../src/application/meta-connection-store.mjs";
 import { campaignStore } from "../../../../src/application/campaign-store.mjs";
 import { checkBudgetCompatibility } from "../../../../src/application/check-budget-compatibility.mjs";
 import { resolveCampaignBudgetInput } from "../../../../src/application/resolve-campaign-budget-input.mjs";
+import { prepareMetaCampaignLaunch } from "../../../../src/application/prepare-meta-campaign-launch.mjs";
+import { createMetaClient } from "../../../../src/connectors/meta/client.mjs";
+import { getMetaInstagramAccounts } from "../../../../src/connectors/meta/instagram-accounts.mjs";
 
 export async function POST(request) {
   try {
@@ -79,11 +85,29 @@ export async function POST(request) {
       );
     }
 
-    if (!connection?.salesSetup?.pixel?.id) {
+    const setupMetaClient = createMetaClient({
+      accessToken: connection.accessToken,
+    });
+
+    const preparation = await prepareMetaCampaignLaunch({
+      campaign,
+      connection,
+      meta: setupMetaClient,
+      getInstagramAccounts: getMetaInstagramAccounts,
+      saveConnection: saveMetaConnection,
+    });
+
+    if (!preparation.preflight.ready) {
       return Response.json(
         {
-          status: "ERROR",
-          error: "Meta sales pixel is not configured",
+          status: "BLOCKED",
+          error:
+            preparation.preflight.blockers[0]?.message ||
+            "Meta campaign setup needs attention before launch",
+          allocation,
+          compatibility,
+          preflight: preparation.preflight,
+          capabilities: preparation.capabilities,
         },
         {
           status: 400,
@@ -93,7 +117,7 @@ export async function POST(request) {
 
     const metaResult = await executeMetaCampaign({
       campaign,
-      connection,
+      connection: preparation.connection,
     });
 
     if (metaResult.status !== "CREATED") {
@@ -102,6 +126,7 @@ export async function POST(request) {
           status: "FAILED",
           campaign,
           allocation,
+          preflight: preparation.preflight,
           platforms: {
             meta: metaResult,
           },
@@ -145,6 +170,7 @@ export async function POST(request) {
       campaign,
       allocation,
       compatibility,
+      preflight: preparation.preflight,
       storedCampaign,
 
       platforms: {
