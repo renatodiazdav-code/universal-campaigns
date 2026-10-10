@@ -18,7 +18,8 @@ function createValidInput() {
       price: 49.99,
       currency: "PEN",
       imageUrl: "https://example.com/shoe.jpg",
-      destinationUrl: "https://example.com/products/test-sneakers",
+      destinationUrl:
+        "https://example.com/products/test-sneakers",
     },
 
     audience: {
@@ -56,19 +57,49 @@ function createValidInput() {
       type: "IMAGE",
       primaryText: "Discover Test Sneakers.",
       headline: "Test Sneakers",
-      destinationUrl: "https://example.com/products/test-sneakers",
+      destinationUrl:
+        "https://example.com/products/test-sneakers",
     },
   };
 }
 
 test("creates a valid Universal Campaign", () => {
-  const campaign = createUniversalCampaign(createValidInput());
+  const campaign = createUniversalCampaign(
+    createValidInput()
+  );
 
   assert.equal(campaign.goal, "SALES");
+  assert.equal(campaign.budget.mode, "TOTAL");
+  assert.equal(campaign.budget.amount, 100);
   assert.equal(campaign.budget.total, 100);
   assert.equal(campaign.budget.allocation.meta, 60);
   assert.equal(campaign.budget.allocation.tiktok, 40);
   assert.equal(campaign.status, "DRAFT");
+});
+
+test("normalizes a daily budget and projected total", () => {
+  const input = createValidInput();
+
+  input.budget = {
+    mode: "DAILY",
+    amount: 70,
+    currency: "PEN",
+    durationDays: 7,
+    allocation: {
+      mode: "MANUAL",
+      meta: 40,
+      tiktok: 30,
+    },
+  };
+
+  const campaign = createUniversalCampaign(input);
+
+  assert.equal(campaign.budget.mode, "DAILY");
+  assert.equal(campaign.budget.amount, 70);
+  assert.equal(campaign.budget.projectedTotal, 490);
+  assert.equal(campaign.budget.total, 490);
+  assert.equal(campaign.budget.allocation.meta, 40);
+  assert.equal(campaign.budget.allocation.tiktok, 30);
 });
 
 test("rejects budget allocation greater than total budget", () => {
