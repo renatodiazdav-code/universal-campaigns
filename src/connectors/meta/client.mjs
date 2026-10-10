@@ -11,6 +11,53 @@ function getAdAccountNodeId(adAccountId) {
     : `act_${adAccountId}`;
 }
 
+function buildMetaGenderTargeting(gender) {
+  const value = String(gender ?? "ALL").toUpperCase();
+
+  if (value === "ALL") {
+    return null;
+  }
+
+  if (value === "MALE") {
+    return [1];
+  }
+
+  if (value === "FEMALE") {
+    return [2];
+  }
+
+  throw new Error(`Unsupported Meta gender: ${gender}`);
+}
+
+function buildMetaPublisherPlatforms(platforms) {
+  if (!Array.isArray(platforms) || platforms.length === 0) {
+    return null;
+  }
+
+  const allowed = new Set([
+    "FACEBOOK",
+    "INSTAGRAM",
+    "MESSENGER",
+    "AUDIENCE_NETWORK",
+  ]);
+
+  const normalized = platforms.map((platform) =>
+    String(platform).toUpperCase()
+  );
+
+  for (const platform of normalized) {
+    if (!allowed.has(platform)) {
+      throw new Error(
+        `Unsupported Meta publisher platform: ${platform}`
+      );
+    }
+  }
+
+  return normalized.map((platform) =>
+    platform.toLowerCase()
+  );
+}
+
 export function createMetaClient({
   adAccountId,
   accessToken,
@@ -222,6 +269,8 @@ export function createMetaClient({
     countries = ["PE"],
     ageMin = 18,
     ageMax = 35,
+    gender = "ALL",
+    publisherPlatforms = null,
     optimizationGoal = "LINK_CLICKS",
     pixelId = null,
     conversionEvent = "PURCHASE",
@@ -264,6 +313,29 @@ export function createMetaClient({
       );
     }
 
+    const targeting = {
+      geo_locations: {
+        countries,
+      },
+      age_min: ageMin,
+      age_max: ageMax,
+      targeting_automation: {
+        advantage_audience: 0,
+      },
+    };
+
+    const genders = buildMetaGenderTargeting(gender);
+    if (genders) {
+      targeting.genders = genders;
+    }
+
+    const normalizedPublisherPlatforms =
+      buildMetaPublisherPlatforms(publisherPlatforms);
+    if (normalizedPublisherPlatforms) {
+      targeting.publisher_platforms =
+        normalizedPublisherPlatforms;
+    }
+
     const body = {
       name,
       campaign_id: campaignId,
@@ -272,18 +344,7 @@ export function createMetaClient({
       billing_event: "IMPRESSIONS",
       optimization_goal: optimizationGoal,
       bid_strategy: "LOWEST_COST_WITHOUT_CAP",
-
-      targeting: JSON.stringify({
-        geo_locations: {
-          countries,
-        },
-        age_min: ageMin,
-        age_max: ageMax,
-        targeting_automation: {
-          advantage_audience: 0,
-        },
-      }),
-
+      targeting: JSON.stringify(targeting),
       status,
       access_token: accessToken,
     };
