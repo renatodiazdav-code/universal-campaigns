@@ -16,12 +16,25 @@ export async function checkBudgetCompatibility(
   const budget = input?.budget ?? {};
   const platforms = input?.platforms ?? {};
 
-  const total = toNumber(budget.total);
+  const budgetMode = String(
+    budget.mode ?? "TOTAL"
+  ).toUpperCase();
+
+  const amount = toNumber(
+    budget.amount ?? budget.total
+  );
+
   const durationDays = toNumber(
     budget.durationDays
   );
+
   const currency =
     String(budget.currency || "USD").toUpperCase();
+
+  const projectedTotal =
+    budgetMode === "DAILY"
+      ? amount * durationDays
+      : amount;
 
   const metaEnabled =
     Boolean(platforms?.meta?.enabled);
@@ -37,6 +50,17 @@ export async function checkBudgetCompatibility(
 
   const issues = [];
 
+  if (
+    budgetMode !== "TOTAL" &&
+    budgetMode !== "DAILY"
+  ) {
+    issues.push({
+      code: "BUDGET_MODE_INVALID",
+      message:
+        "Choose Total budget or Daily budget.",
+    });
+  }
+
   if (!metaEnabled && !tiktokEnabled) {
     issues.push({
       code: "NO_PLATFORM_SELECTED",
@@ -45,9 +69,9 @@ export async function checkBudgetCompatibility(
     });
   }
 
-  if (total <= 0) {
+  if (amount <= 0) {
     issues.push({
-      code: "TOTAL_BUDGET_REQUIRED",
+      code: "BUDGET_REQUIRED",
       message:
         "Campaign budget must be greater than zero.",
     });
@@ -63,13 +87,13 @@ export async function checkBudgetCompatibility(
 
   if (
     Math.abs(
-      metaBudget + tiktokBudget - total
+      metaBudget + tiktokBudget - amount
     ) > 0.000001
   ) {
     issues.push({
       code: "ALLOCATION_MISMATCH",
       message:
-        "Platform budgets must add up to the total campaign budget.",
+        `Platform budgets must add up to the ${budgetMode === "DAILY" ? "daily" : "total"} campaign budget.`,
     });
   }
 
@@ -93,6 +117,7 @@ export async function checkBudgetCompatibility(
     enabled: metaEnabled,
     allocatedBudget: metaBudget,
     currency,
+    budgetMode,
   });
 
   const tiktok = await evaluateTikTokBudget({
@@ -100,6 +125,7 @@ export async function checkBudgetCompatibility(
     allocatedBudget: tiktokBudget,
     currency,
     durationDays,
+    budgetMode,
     getExchangeRate: exchangeRateProvider,
   });
 
@@ -117,11 +143,13 @@ export async function checkBudgetCompatibility(
   }
 
   return {
-    version: 1,
+    version: 2,
     eligible: issues.length === 0,
     currency,
-    totalBudget: total,
+    budgetMode,
+    budgetAmount: amount,
     durationDays,
+    projectedTotal,
     platforms: {
       meta,
       tiktok,
