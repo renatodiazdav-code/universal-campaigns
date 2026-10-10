@@ -133,6 +133,8 @@ export async function executeMetaCampaign({
       countries: metaPlan.audience.countries,
       ageMin: metaPlan.audience.ageMin,
       ageMax: metaPlan.audience.ageMax,
+      gender: metaPlan.audience.gender,
+      publisherPlatforms: metaPlan.placements,
 
       optimizationGoal: "OFFSITE_CONVERSIONS",
       pixelId: pixel.id,
@@ -188,6 +190,13 @@ export async function executeMetaCampaign({
         objective: metaPlan.campaign.objective,
         optimizationGoal: "OFFSITE_CONVERSIONS",
         conversionEvent: "PURCHASE",
+        audience: {
+          countries: metaPlan.audience.countries,
+          ageMin: metaPlan.audience.ageMin,
+          ageMax: metaPlan.audience.ageMax,
+          gender: metaPlan.audience.gender,
+        },
+        placements: metaPlan.placements,
         pixel: {
           id: pixel.id,
           name: pixel.name,
