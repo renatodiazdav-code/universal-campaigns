@@ -171,7 +171,7 @@ export function createMetaClient({
   async function getAdSet(adSetId) {
     const params = new URLSearchParams({
       fields:
-        "id,name,status,effective_status,optimization_goal",
+        "id,name,status,effective_status,optimization_goal,start_time,end_time,lifetime_budget",
       access_token: accessToken,
     });
 
@@ -214,7 +214,9 @@ export function createMetaClient({
   async function createAdSet({
     name,
     campaignId,
-    dailyBudget,
+    lifetimeBudget,
+    startTime,
+    endTime,
     countries = ["PE"],
     ageMin = 18,
     ageMax = 35,
@@ -225,6 +227,14 @@ export function createMetaClient({
   }) {
     if (!adAccountId) {
       throw new Error("Missing Meta ad account ID");
+    }
+
+    if (!lifetimeBudget || lifetimeBudget <= 0) {
+      throw new Error("Meta lifetime budget must be greater than zero");
+    }
+
+    if (!startTime || !endTime) {
+      throw new Error("Meta ad set schedule is required");
     }
 
     if (
@@ -239,7 +249,9 @@ export function createMetaClient({
     const body = {
       name,
       campaign_id: campaignId,
-      daily_budget: String(dailyBudget),
+      lifetime_budget: String(lifetimeBudget),
+      start_time: startTime,
+      end_time: endTime,
       billing_event: "IMPRESSIONS",
       optimization_goal: optimizationGoal,
       bid_strategy: "LOWEST_COST_WITHOUT_CAP",
