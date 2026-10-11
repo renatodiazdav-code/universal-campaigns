@@ -16,6 +16,36 @@ function toPositiveNumber(value, label) {
   return number;
 }
 
+function normalizePlatformOverrides(value, label) {
+  if (value == null) {
+    return {};
+  }
+
+  if (typeof value !== "object" || Array.isArray(value)) {
+    throw new Error(`${label} overrides must be an object`);
+  }
+
+  return { ...value };
+}
+
+function normalizeCampaignOverrides(value) {
+  if (value == null) {
+    return {
+      meta: {},
+      tiktok: {},
+    };
+  }
+
+  if (typeof value !== "object" || Array.isArray(value)) {
+    throw new Error("Campaign overrides must be an object");
+  }
+
+  return {
+    meta: normalizePlatformOverrides(value.meta, "Meta"),
+    tiktok: normalizePlatformOverrides(value.tiktok, "TikTok"),
+  };
+}
+
 export function createUniversalCampaign(input) {
   if (!input.name?.trim()) {
     throw new Error("Campaign name is required");
@@ -193,6 +223,8 @@ export function createUniversalCampaign(input) {
         null,
       callToAction,
     },
+
+    overrides: normalizeCampaignOverrides(input.overrides),
 
     status: "DRAFT",
     createdAt: new Date().toISOString(),
