@@ -58,6 +58,26 @@ function buildMetaPublisherPlatforms(platforms) {
   );
 }
 
+function buildMetaTargetingAutomation({
+  advantageAudience,
+  allowAgeExpansion,
+  allowGenderExpansion,
+}) {
+  if (!advantageAudience) {
+    return {
+      advantage_audience: 0,
+    };
+  }
+
+  return {
+    advantage_audience: 1,
+    individual_setting: {
+      age: allowAgeExpansion ? 1 : 0,
+      gender: allowGenderExpansion ? 1 : 0,
+    },
+  };
+}
+
 export function createMetaClient({
   adAccountId,
   accessToken,
@@ -262,7 +282,7 @@ export function createMetaClient({
   async function getAdSet(adSetId) {
     const params = new URLSearchParams({
       fields:
-        "id,name,status,effective_status,optimization_goal,start_time,end_time,daily_budget,lifetime_budget",
+        "id,name,status,effective_status,optimization_goal,start_time,end_time,daily_budget,lifetime_budget,bid_amount",
       access_token: accessToken,
     });
 
@@ -316,8 +336,12 @@ export function createMetaClient({
     ageMax = 35,
     gender = "ALL",
     publisherPlatforms = null,
+    advantageAudience = true,
+    allowAgeExpansion = false,
+    allowGenderExpansion = false,
     optimizationGoal = "LINK_CLICKS",
     bidStrategy = "LOWEST_COST_WITHOUT_CAP",
+    bidAmount = null,
     pixelId = null,
     conversionEvent = "PURCHASE",
     status = "PAUSED",
@@ -355,6 +379,16 @@ export function createMetaClient({
       }
     }
 
+    if (bidAmount != null) {
+      const numericBidAmount = Number(bidAmount);
+
+      if (!Number.isFinite(numericBidAmount) || numericBidAmount <= 0) {
+        throw new Error(
+          "Meta bid amount must be greater than zero"
+        );
+      }
+    }
+
     if (!startTime || !endTime) {
       throw new Error("Meta ad set schedule is required");
     }
@@ -374,9 +408,11 @@ export function createMetaClient({
       },
       age_min: ageMin,
       age_max: ageMax,
-      targeting_automation: {
-        advantage_audience: 0,
-      },
+      targeting_automation: buildMetaTargetingAutomation({
+        advantageAudience,
+        allowAgeExpansion,
+        allowGenderExpansion,
+      }),
     };
 
     const genders = buildMetaGenderTargeting(gender);
@@ -411,6 +447,10 @@ export function createMetaClient({
       } else {
         body.lifetime_budget = String(lifetimeBudget);
       }
+    }
+
+    if (bidAmount != null) {
+      body.bid_amount = String(Math.round(Number(bidAmount)));
     }
 
     if (optimizationGoal === "OFFSITE_CONVERSIONS") {
