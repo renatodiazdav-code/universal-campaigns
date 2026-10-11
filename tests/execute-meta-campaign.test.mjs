@@ -163,6 +163,10 @@ test("executes a TOTAL Universal Campaign with Meta campaign lifetime budget", a
     "PURCHASE"
   );
   assert.equal(calls[1].input.gender, "ALL");
+  assert.equal(calls[1].input.advantageAudience, true);
+  assert.equal(calls[1].input.allowAgeExpansion, false);
+  assert.equal(calls[1].input.allowGenderExpansion, false);
+  assert.equal(calls[1].input.bidAmount, null);
   assert.deepEqual(
     calls[1].input.publisherPlatforms,
     ["FACEBOOK", "INSTAGRAM"]
@@ -183,6 +187,14 @@ test("executes a TOTAL Universal Campaign with Meta campaign lifetime budget", a
   assert.equal(result.configuration.lifetimeBudget, 6000);
   assert.equal(result.configuration.dailyBudget, null);
   assert.equal(result.configuration.audience.gender, "ALL");
+  assert.equal(
+    result.configuration.audience.strategy,
+    "ADVANTAGE_PLUS"
+  );
+  assert.equal(
+    result.configuration.bidding.strategy,
+    "LOWEST_COST"
+  );
   assert.deepEqual(
     result.configuration.placements,
     ["FACEBOOK", "INSTAGRAM"]
@@ -256,4 +268,45 @@ test("passes gender and selected Meta publishers into the ad set", async () => {
     result.configuration.placements,
     ["INSTAGRAM"]
   );
+});
+
+test("executes Meta Cost Cap override while keeping campaign budget", async () => {
+  const input = createInput({
+    amount: 50,
+    meta: 50,
+    tiktok: 0,
+  });
+
+  input.overrides = {
+    meta: {
+      audienceStrategy: "MANUAL",
+      bidding: {
+        strategy: "COST_CAP",
+        costCap: 12.5,
+      },
+    },
+  };
+
+  const campaign = createUniversalCampaign(input);
+  const calls = [];
+
+  const result = await executeMetaCampaign({
+    campaign,
+    connection: createConnection(),
+    metaClient: createFakeMeta(calls),
+    now: new Date("2026-10-10T12:00:00.000Z"),
+  });
+
+  assert.equal(result.status, "CREATED");
+  assert.equal(calls[0].input.bidStrategy, "COST_CAP");
+  assert.equal(calls[1].input.bidAmount, 1250);
+  assert.equal(calls[1].input.advantageAudience, false);
+
+  assert.equal(
+    result.configuration.audience.strategy,
+    "MANUAL"
+  );
+  assert.equal(result.configuration.bidding.strategy, "COST_CAP");
+  assert.equal(result.configuration.bidding.costCap, 12.5);
+  assert.equal(result.configuration.bidding.bidAmount, 1250);
 });
