@@ -68,6 +68,26 @@ test("reports NOT_CONFIGURED when Relay can query Web Pixels but has no pixel re
   assert.equal(result.webPixel, null);
 });
 
+test("reports NOT_CONFIGURED when Shopify says this app has no Web Pixel", async () => {
+  const result = await inspectShopifyWebPixelAccess({
+    shop: "luvixy",
+    accessToken: "fake-token",
+    fetchImpl: async () =>
+      jsonResponse({
+        errors: [
+          {
+            message: "No web pixel was found for this app.",
+          },
+        ],
+      }),
+  });
+
+  assert.equal(result.status, "NOT_CONFIGURED");
+  assert.equal(result.hasAccess, true);
+  assert.equal(result.webPixel, null);
+  assert.equal(result.error, null);
+});
+
 test("reports MISSING_SCOPE when Shopify denies read_pixels access", async () => {
   const result = await inspectShopifyWebPixelAccess({
     shop: "luvixy",
