@@ -189,6 +189,11 @@ export async function executeMetaCampaign({
       created.videoId = videoId;
     }
 
+    const imageHash =
+      metaPlan.creative.type === "IMAGE"
+        ? metaPlan.creative.metaImageHash ?? null
+        : null;
+
     const creative = await meta.createAdCreative({
       name: `${campaign.name} - Creative`,
       pageId: page.id,
@@ -200,6 +205,7 @@ export async function executeMetaCampaign({
         metaPlan.creative.type === "VIDEO"
           ? metaPlan.creative.thumbnailUrl
           : metaPlan.creative.imageUrl,
+      imageHash,
       creativeType: metaPlan.creative.type,
       videoId,
       callToAction: metaPlan.creative.callToAction,
@@ -233,6 +239,7 @@ export async function executeMetaCampaign({
       creative: {
         id: creative.id,
         type: metaPlan.creative.type,
+        imageHash,
         videoId,
       },
 
@@ -246,6 +253,7 @@ export async function executeMetaCampaign({
         conversionEvent: "PURCHASE",
         callToAction: metaPlan.creative.callToAction,
         creativeType: metaPlan.creative.type,
+        imageHash,
         videoId,
         audience: {
           countries: metaPlan.audience.countries,
