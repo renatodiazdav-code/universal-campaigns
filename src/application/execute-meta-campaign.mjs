@@ -112,14 +112,6 @@ export async function executeMetaCampaign({
   };
 
   try {
-    const metaCampaign = await meta.createCampaign({
-      name: campaign.name,
-      objective: metaPlan.campaign.objective,
-      status: "PAUSED",
-    });
-
-    created.campaignId = metaCampaign.id;
-
     const schedule = buildBudgetSchedule({
       budgetMode: metaPlan.budget.mode,
       allocatedBudget: metaPlan.budget.allocated,
@@ -127,12 +119,25 @@ export async function executeMetaCampaign({
       now,
     });
 
-    const adSet = await meta.createAdSet({
-      name: `${campaign.name} - Ad Set`,
-      campaignId: metaCampaign.id,
+    const metaCampaign = await meta.createCampaign({
+      name: campaign.name,
+      objective: metaPlan.campaign.objective,
       budgetMode: schedule.budgetMode,
       dailyBudget: schedule.dailyBudget,
       lifetimeBudget: schedule.lifetimeBudget,
+      bidStrategy: "LOWEST_COST_WITHOUT_CAP",
+      startTime: schedule.startTime,
+      endTime: schedule.endTime,
+      status: "PAUSED",
+    });
+
+    created.campaignId = metaCampaign.id;
+
+    const adSet = await meta.createAdSet({
+      name: `${campaign.name} - Ad Set`,
+      campaignId: metaCampaign.id,
+      budgetStrategy: metaPlan.budget.strategy,
+      budgetMode: schedule.budgetMode,
       startTime: schedule.startTime,
       endTime: schedule.endTime,
 
@@ -221,6 +226,7 @@ export async function executeMetaCampaign({
               name: selectedInstagramAccount.name ?? null,
             }
           : null,
+        budgetStrategy: metaPlan.budget.strategy,
         budgetMode: schedule.budgetMode,
         dailyBudget: schedule.dailyBudget,
         lifetimeBudget: schedule.lifetimeBudget,
