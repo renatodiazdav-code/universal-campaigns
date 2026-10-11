@@ -72,6 +72,7 @@ export function buildMetaCampaignPlan(campaign) {
       destinationUrl: campaign.creative.destinationUrl,
       imageUrl: campaign.product.imageUrl,
       callToAction: campaign.creative.callToAction,
+      adaptation: advanced.creativeAdaptation,
     },
 
     overrides: campaign.overrides?.meta ?? {},
