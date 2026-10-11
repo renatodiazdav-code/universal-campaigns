@@ -8,6 +8,23 @@ const BIDDING_STRATEGIES = new Set([
   "COST_CAP",
 ]);
 
+const PLACEMENT_MODES = new Set([
+  "RECOMMENDED",
+  "MANUAL",
+]);
+
+const PLACEMENT_POSITIONS = new Set([
+  "FEED",
+  "STORIES",
+  "REELS",
+]);
+
+const RECOMMENDED_POSITIONS = [
+  "FEED",
+  "STORIES",
+  "REELS",
+];
+
 function normalizeObject(value, label) {
   if (value == null) {
     return {};
@@ -30,7 +47,113 @@ function toPositiveNumber(value, label) {
   return number;
 }
 
-export function resolveMetaAdvancedSettings(overrides = {}) {
+function normalizePlacementPositions(value, label) {
+  if (value == null) {
+    return [];
+  }
+
+  if (!Array.isArray(value)) {
+    throw new Error(`${label} placements must be an array`);
+  }
+
+  const normalized = value.map((position) =>
+    String(position).toUpperCase()
+  );
+
+  for (const position of normalized) {
+    if (!PLACEMENT_POSITIONS.has(position)) {
+      throw new Error(
+        `Unsupported ${label} placement: ${position}`
+      );
+    }
+  }
+
+  return [...new Set(normalized)];
+}
+
+function resolveMetaPlacements(
+  metaOverrides,
+  {
+    facebookEnabled = true,
+    instagramEnabled = true,
+  } = {}
+) {
+  const placementsInput = normalizeObject(
+    metaOverrides.placements,
+    "Meta placements"
+  );
+
+  const mode = String(
+    placementsInput.mode ?? "RECOMMENDED"
+  ).toUpperCase();
+
+  if (!PLACEMENT_MODES.has(mode)) {
+    throw new Error(
+      `Unsupported Meta placement mode: ${mode}`
+    );
+  }
+
+  let facebook = [];
+  let instagram = [];
+
+  if (mode === "RECOMMENDED") {
+    facebook = facebookEnabled
+      ? [...RECOMMENDED_POSITIONS]
+      : [];
+    instagram = instagramEnabled
+      ? [...RECOMMENDED_POSITIONS]
+      : [];
+  } else {
+    facebook = normalizePlacementPositions(
+      placementsInput.facebook,
+      "Facebook"
+    );
+    instagram = normalizePlacementPositions(
+      placementsInput.instagram,
+      "Instagram"
+    );
+
+    if (!facebookEnabled && facebook.length > 0) {
+      throw new Error(
+        "Facebook placements cannot be selected when Facebook is disabled"
+      );
+    }
+
+    if (!instagramEnabled && instagram.length > 0) {
+      throw new Error(
+        "Instagram placements cannot be selected when Instagram is disabled"
+      );
+    }
+  }
+
+  const publisherPlatforms = [];
+
+  if (facebook.length > 0) {
+    publisherPlatforms.push("FACEBOOK");
+  }
+
+  if (instagram.length > 0) {
+    publisherPlatforms.push("INSTAGRAM");
+  }
+
+  if (publisherPlatforms.length === 0) {
+    throw new Error(
+      "At least one Facebook or Instagram placement must be selected"
+    );
+  }
+
+  return {
+    mode,
+    publisherPlatforms,
+    facebook,
+    instagram,
+  };
+}
+
+export function resolveMetaAdvancedSettings(
+  overrides = {},
+  platformContext = {}
+) {
   const metaOverrides = normalizeObject(
     overrides,
     "Meta overrides"
@@ -92,5 +215,10 @@ export function resolveMetaAdvancedSettings(overrides = {}) {
           : "LOWEST_COST_WITHOUT_CAP",
       costCap,
     },
+
+    placements: resolveMetaPlacements(
+      metaOverrides,
+      platformContext
+    ),
   };
 }
