@@ -7,6 +7,8 @@ export async function prepareMetaCampaignLaunch({
   connection,
   meta,
   getInstagramAccounts,
+  getPixelDetails = null,
+  getPixelEventStats = null,
   saveConnection,
 }) {
   if (!campaign) {
@@ -24,6 +26,8 @@ export async function prepareMetaCampaignLaunch({
     connection,
     meta,
     getInstagramAccounts,
+    getPixelDetails,
+    getPixelEventStats,
     saveConnection,
   });
 
