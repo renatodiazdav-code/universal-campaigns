@@ -4,6 +4,10 @@ import { createMetaClient } from "../../../../../src/connectors/meta/client.mjs"
 import { discoverMetaSetup } from "../../../../../src/application/discover-meta-setup.mjs";
 import { refreshMetaSetupSnapshot } from "../../../../../src/application/refresh-meta-setup-snapshot.mjs";
 import { getMetaInstagramAccounts } from "../../../../../src/connectors/meta/instagram-accounts.mjs";
+import {
+  getMetaPixelDetails,
+  getMetaPixelEventStats,
+} from "../../../../../src/connectors/meta/pixel-health.mjs";
 
 export async function GET(request) {
   try {
@@ -127,6 +131,8 @@ export async function GET(request) {
       connection,
       meta,
       getInstagramAccounts: getMetaInstagramAccounts,
+      getPixelDetails: getMetaPixelDetails,
+      getPixelEventStats: getMetaPixelEventStats,
       saveConnection: saveMetaConnection,
     });
 
