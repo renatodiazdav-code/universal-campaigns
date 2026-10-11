@@ -1,6 +1,18 @@
 const META_API_VERSION = "v26.0";
 const META_GRAPH_URL = `https://graph.facebook.com/${META_API_VERSION}`;
 
+const FACEBOOK_POSITION_MAP = Object.freeze({
+  FEED: "feed",
+  STORIES: "story",
+  REELS: "facebook_reels",
+});
+
+const INSTAGRAM_POSITION_MAP = Object.freeze({
+  FEED: "stream",
+  STORIES: "story",
+  REELS: "reels",
+});
+
 function getAdAccountNodeId(adAccountId) {
   if (!adAccountId) {
     throw new Error("Missing Meta ad account ID");
@@ -55,6 +67,36 @@ function buildMetaPublisherPlatforms(platforms) {
 
   return normalized.map((platform) =>
     platform.toLowerCase()
+  );
+}
+
+function buildMetaPlacementPositions(
+  positions,
+  label,
+  positionMap
+) {
+  if (positions == null) {
+    return null;
+  }
+
+  if (!Array.isArray(positions)) {
+    throw new Error(`${label} positions must be an array`);
+  }
+
+  const normalized = positions.map((position) =>
+    String(position).toUpperCase()
+  );
+
+  for (const position of normalized) {
+    if (!(position in positionMap)) {
+      throw new Error(
+        `Unsupported ${label} position: ${position}`
+      );
+    }
+  }
+
+  return [...new Set(normalized)].map(
+    (position) => positionMap[position]
   );
 }
 
@@ -336,6 +378,8 @@ export function createMetaClient({
     ageMax = 35,
     gender = "ALL",
     publisherPlatforms = null,
+    facebookPositions = null,
+    instagramPositions = null,
     advantageAudience = true,
     allowAgeExpansion = false,
     allowGenderExpansion = false,
@@ -425,6 +469,48 @@ export function createMetaClient({
     if (normalizedPublisherPlatforms) {
       targeting.publisher_platforms =
         normalizedPublisherPlatforms;
+    }
+
+    const normalizedFacebookPositions =
+      buildMetaPlacementPositions(
+        facebookPositions,
+        "Facebook",
+        FACEBOOK_POSITION_MAP
+      );
+
+    if (
+      normalizedFacebookPositions &&
+      normalizedFacebookPositions.length > 0
+    ) {
+      if (!normalizedPublisherPlatforms?.includes("facebook")) {
+        throw new Error(
+          "Facebook positions require Facebook publisher placement"
+        );
+      }
+
+      targeting.facebook_positions =
+        normalizedFacebookPositions;
+    }
+
+    const normalizedInstagramPositions =
+      buildMetaPlacementPositions(
+        instagramPositions,
+        "Instagram",
+        INSTAGRAM_POSITION_MAP
+      );
+
+    if (
+      normalizedInstagramPositions &&
+      normalizedInstagramPositions.length > 0
+    ) {
+      if (!normalizedPublisherPlatforms?.includes("instagram")) {
+        throw new Error(
+          "Instagram positions require Instagram publisher placement"
+        );
+      }
+
+      targeting.instagram_positions =
+        normalizedInstagramPositions;
     }
 
     const body = {
