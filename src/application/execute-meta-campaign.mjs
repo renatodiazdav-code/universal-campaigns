@@ -183,6 +183,7 @@ export async function executeMetaCampaign({
       imageUrl: metaPlan.creative.imageUrl,
       callToAction: metaPlan.creative.callToAction,
       instagramActorId: selectedInstagramAccount?.id ?? null,
+      creativeAdaptation: metaPlan.creative.adaptation,
     });
 
     created.creativeId = creative.id;
@@ -242,6 +243,7 @@ export async function executeMetaCampaign({
           facebook: metaPlan.placementSettings.facebook,
           instagram: metaPlan.placementSettings.instagram,
         },
+        creativeAdaptation: metaPlan.creative.adaptation,
         pixel: {
           id: pixel.id,
           name: pixel.name,
