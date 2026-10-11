@@ -9,24 +9,25 @@ export function buildMetaCampaignPlan(campaign) {
     throw new Error("Meta MVP only supports SALES");
   }
 
-  const placements = [];
+  const facebookEnabled = Boolean(
+    campaign.platforms.meta.facebook
+  );
+  const instagramEnabled = Boolean(
+    campaign.platforms.meta.instagram
+  );
 
-  if (campaign.platforms.meta.facebook) {
-    placements.push("FACEBOOK");
-  }
-
-  if (campaign.platforms.meta.instagram) {
-    placements.push("INSTAGRAM");
-  }
-
-  if (placements.length === 0) {
+  if (!facebookEnabled && !instagramEnabled) {
     throw new Error(
       "At least one Meta placement must be enabled"
     );
   }
 
   const advanced = resolveMetaAdvancedSettings(
-    campaign.overrides?.meta ?? {}
+    campaign.overrides?.meta ?? {},
+    {
+      facebookEnabled,
+      instagramEnabled,
+    }
   );
 
   return {
@@ -61,7 +62,8 @@ export function buildMetaCampaignPlan(campaign) {
       durationDays: campaign.budget.durationDays,
     },
 
-    placements,
+    placements: advanced.placements.publisherPlatforms,
+    placementSettings: advanced.placements,
 
     creative: {
       type: campaign.creative.type,
