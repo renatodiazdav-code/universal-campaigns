@@ -1,3 +1,5 @@
+import { resolveMetaAdvancedSettings } from "./advanced-settings.mjs";
+
 export function buildMetaCampaignPlan(campaign) {
   if (!campaign.platforms?.meta?.enabled) {
     throw new Error("Meta is not enabled for this campaign");
@@ -23,6 +25,10 @@ export function buildMetaCampaignPlan(campaign) {
     );
   }
 
+  const advanced = resolveMetaAdvancedSettings(
+    campaign.overrides?.meta ?? {}
+  );
+
   return {
     platform: "META",
 
@@ -36,7 +42,16 @@ export function buildMetaCampaignPlan(campaign) {
       ageMin: campaign.audience.ageMin,
       ageMax: campaign.audience.ageMax,
       gender: campaign.audience.gender,
+      strategy: advanced.audience.strategy,
+      advantageAudience:
+        advanced.audience.advantageAudience,
+      allowAgeExpansion:
+        advanced.audience.allowAgeExpansion,
+      allowGenderExpansion:
+        advanced.audience.allowGenderExpansion,
     },
+
+    bidding: advanced.bidding,
 
     budget: {
       strategy: "CAMPAIGN",
