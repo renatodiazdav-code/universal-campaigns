@@ -10,6 +10,10 @@ import { resolveCampaignBudgetInput } from "../../../../src/application/resolve-
 import { prepareMetaCampaignLaunch } from "../../../../src/application/prepare-meta-campaign-launch.mjs";
 import { createMetaClient } from "../../../../src/connectors/meta/client.mjs";
 import { getMetaInstagramAccounts } from "../../../../src/connectors/meta/instagram-accounts.mjs";
+import {
+  getMetaPixelDetails,
+  getMetaPixelEventStats,
+} from "../../../../src/connectors/meta/pixel-health.mjs";
 
 export async function POST(request) {
   try {
@@ -94,6 +98,8 @@ export async function POST(request) {
       connection,
       meta: setupMetaClient,
       getInstagramAccounts: getMetaInstagramAccounts,
+      getPixelDetails: getMetaPixelDetails,
+      getPixelEventStats: getMetaPixelEventStats,
       saveConnection: saveMetaConnection,
     });
 
