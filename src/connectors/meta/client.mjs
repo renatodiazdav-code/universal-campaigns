@@ -120,8 +120,9 @@ function buildMetaTargetingAutomation({
   };
 }
 
-function buildMetaImageCreativeAdaptation(
-  creativeAdaptation = {}
+function buildMetaCreativeAdaptation(
+  creativeAdaptation = {},
+  creativeType = "IMAGE"
 ) {
   const mode = String(
     creativeAdaptation?.mode ?? "AUTOMATIC"
@@ -133,6 +134,12 @@ function buildMetaImageCreativeAdaptation(
     );
   }
 
+  const type = String(creativeType).toUpperCase();
+
+  if (type !== "IMAGE" && type !== "VIDEO") {
+    throw new Error(`Unsupported Meta creative type: ${type}`);
+  }
+
   const creativeFeaturesSpec = {};
 
   if (creativeAdaptation?.adaptToPlacement !== false) {
@@ -141,8 +148,20 @@ function buildMetaImageCreativeAdaptation(
     };
   }
 
-  if (creativeAdaptation?.imageAutoCrop !== false) {
+  if (
+    type === "IMAGE" &&
+    creativeAdaptation?.imageAutoCrop !== false
+  ) {
     creativeFeaturesSpec.image_auto_crop = {
+      enroll_status: "OPT_IN",
+    };
+  }
+
+  if (
+    type === "VIDEO" &&
+    creativeAdaptation?.videoAutoCrop !== false
+  ) {
+    creativeFeaturesSpec.video_auto_crop = {
       enroll_status: "OPT_IN",
     };
   }
@@ -600,6 +619,44 @@ export function createMetaClient({
     return result;
   }
 
+  async function createAdVideo({
+    fileUrl,
+    title = "Relay video creative",
+  }) {
+    if (!adAccountId) {
+      throw new Error("Missing Meta ad account ID");
+    }
+
+    if (!fileUrl?.trim?.()) {
+      throw new Error("Meta video file URL is required");
+    }
+
+    const response = await fetch(
+      `${META_GRAPH_URL}/${getAdAccountNodeId(adAccountId)}/advideos`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: new URLSearchParams({
+          file_url: fileUrl,
+          title,
+          access_token: accessToken,
+        }),
+      }
+    );
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        `Meta create ad video failed: ${JSON.stringify(result)}`
+      );
+    }
+
+    return result;
+  }
+
   async function createAdCreative({
     name,
     pageId,
@@ -607,22 +664,33 @@ export function createMetaClient({
     headline,
     destinationUrl,
     imageUrl,
+    creativeType = "IMAGE",
+    videoId = null,
     callToAction = "SHOP_NOW",
     instagramActorId = null,
     creativeAdaptation = {
       mode: "AUTOMATIC",
       adaptToPlacement: true,
       imageAutoCrop: true,
+      videoAutoCrop: true,
     },
   }) {
     if (!adAccountId) {
       throw new Error("Missing Meta ad account ID");
     }
 
+    const type = String(creativeType).toUpperCase();
+
+    if (type !== "IMAGE" && type !== "VIDEO") {
+      throw new Error(`Unsupported Meta creative type: ${type}`);
+    }
+
     const objectStorySpec = {
       page_id: pageId,
+    };
 
-      link_data: {
+    if (type === "IMAGE") {
+      objectStorySpec.link_data = {
         link: destinationUrl,
         message,
         name: headline,
@@ -630,15 +698,38 @@ export function createMetaClient({
         call_to_action: {
           type: callToAction,
         },
-      },
-    };
+      };
+    } else {
+      if (!videoId) {
+        throw new Error("Meta video ID is required for VIDEO creatives");
+      }
+
+      objectStorySpec.video_data = {
+        video_id: String(videoId),
+        message,
+        title: headline,
+        call_to_action: {
+          type: callToAction,
+          value: {
+            link: destinationUrl,
+          },
+        },
+      };
+
+      if (imageUrl) {
+        objectStorySpec.video_data.image_url = imageUrl;
+      }
+    }
 
     if (instagramActorId) {
       objectStorySpec.instagram_actor_id = String(instagramActorId);
     }
 
     const degreesOfFreedomSpec =
-      buildMetaImageCreativeAdaptation(creativeAdaptation);
+      buildMetaCreativeAdaptation(
+        creativeAdaptation,
+        type
+      );
 
     const response = await fetch(
       `${META_GRAPH_URL}/${getAdAccountNodeId(adAccountId)}/adcreatives`,
@@ -729,6 +820,7 @@ export function createMetaClient({
     createAdSet,
     getAdSet,
 
+    createAdVideo,
     createAdCreative,
 
     createAd,
