@@ -116,6 +116,56 @@ test("omits gender restriction for Everyone targeting", async () => {
   }
 });
 
+test("maps Relay feed stories and reels to Meta placement fields", async () => {
+  const originalFetch = globalThis.fetch;
+  let capturedTargeting = null;
+
+  globalThis.fetch = async (_url, options = {}) => {
+    capturedTargeting = JSON.parse(options.body.get("targeting"));
+    return createJsonResponse({ id: "adset-123" });
+  };
+
+  try {
+    const meta = createMetaClient({
+      adAccountId: "act_123",
+      accessToken: "fake-token",
+    });
+
+    await meta.createAdSet({
+      name: "Relay Placement Ad Set",
+      campaignId: "campaign-123",
+      budgetMode: "TOTAL",
+      lifetimeBudget: 5000,
+      startTime: "2026-10-10T12:00:00.000Z",
+      endTime: "2026-10-17T12:00:00.000Z",
+      countries: ["PE"],
+      publisherPlatforms: ["FACEBOOK", "INSTAGRAM"],
+      facebookPositions: ["FEED", "STORIES", "REELS"],
+      instagramPositions: ["FEED", "STORIES", "REELS"],
+      optimizationGoal: "OFFSITE_CONVERSIONS",
+      pixelId: "pixel-123",
+      conversionEvent: "PURCHASE",
+      status: "PAUSED",
+    });
+
+    assert.deepEqual(
+      capturedTargeting.facebook_positions,
+      ["feed", "story", "facebook_reels"]
+    );
+    assert.deepEqual(
+      capturedTargeting.instagram_positions,
+      ["stream", "story", "reels"]
+    );
+    assert.equal("messenger_positions" in capturedTargeting, false);
+    assert.equal(
+      "audience_network_positions" in capturedTargeting,
+      false
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("disables Advantage+ audience when Relay uses manual audience strategy", async () => {
   const originalFetch = globalThis.fetch;
   let capturedTargeting = null;
