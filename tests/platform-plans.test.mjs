@@ -95,6 +95,18 @@ test("builds the expected Meta placements", () => {
     "FACEBOOK",
     "INSTAGRAM",
   ]);
+  assert.equal(
+    plans.meta.placementSettings.mode,
+    "RECOMMENDED"
+  );
+  assert.deepEqual(
+    plans.meta.placementSettings.facebook,
+    ["FEED", "STORIES", "REELS"]
+  );
+  assert.deepEqual(
+    plans.meta.placementSettings.instagram,
+    ["FEED", "STORIES", "REELS"]
+  );
 });
 
 test("routes advanced overrides only to their platform plan", () => {
