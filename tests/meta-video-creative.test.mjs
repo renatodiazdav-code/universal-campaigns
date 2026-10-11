@@ -126,13 +126,31 @@ test("normalizes a VIDEO Universal Campaign with a reusable video URL", () => {
   );
 });
 
-test("rejects a VIDEO creative without a video URL", () => {
+test("rejects a VIDEO creative without a URL or uploaded platform asset", () => {
   const input = createVideoInput();
   delete input.creative.videoUrl;
 
   assert.throws(
     () => createUniversalCampaign(input),
-    /Video URL is required/
+    /video URL or uploaded video asset/i
+  );
+});
+
+test("accepts a VIDEO creative that already has a Meta video asset", () => {
+  const input = createVideoInput();
+  delete input.creative.videoUrl;
+  input.creative.platformAssets = {
+    meta: {
+      videoId: "meta-video-456",
+    },
+  };
+
+  const campaign = createUniversalCampaign(input);
+
+  assert.equal(campaign.creative.videoUrl, null);
+  assert.equal(
+    campaign.creative.platformAssets.meta.videoId,
+    "meta-video-456"
   );
 });
 
@@ -276,4 +294,40 @@ test("executes a VIDEO campaign by uploading the video before the creative", asy
   assert.equal(result.creative.videoId, "video-123");
   assert.equal(result.configuration.creativeType, "VIDEO");
   assert.equal(result.configuration.videoId, "video-123");
+  assert.equal(result.created, undefined);
+});
+
+test("reuses an uploaded Meta video asset without uploading it again", async () => {
+  const input = createVideoInput();
+  delete input.creative.videoUrl;
+  input.creative.platformAssets = {
+    meta: {
+      videoId: "meta-video-456",
+    },
+  };
+
+  const campaign = createUniversalCampaign(input);
+  const calls = [];
+
+  const result = await executeMetaCampaign({
+    campaign,
+    connection: createConnection(),
+    metaClient: createFakeMeta(calls),
+    now: new Date("2026-10-10T12:00:00.000Z"),
+  });
+
+  assert.equal(result.status, "CREATED");
+  assert.deepEqual(
+    calls.map((call) => call.method),
+    [
+      "createCampaign",
+      "createAdSet",
+      "createAdCreative",
+      "createAd",
+    ]
+  );
+  assert.equal(calls[2].input.creativeType, "VIDEO");
+  assert.equal(calls[2].input.videoId, "meta-video-456");
+  assert.equal(result.creative.videoId, "meta-video-456");
+  assert.equal(result.configuration.videoId, "meta-video-456");
 });
