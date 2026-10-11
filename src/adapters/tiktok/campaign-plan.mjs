@@ -38,6 +38,8 @@ export function buildTikTokCampaignPlan(campaign) {
       callToAction: campaign.creative.callToAction,
     },
 
+    overrides: campaign.overrides?.tiktok ?? {},
+
     sourceCampaignVersion: campaign.version,
   };
 }
