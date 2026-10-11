@@ -97,6 +97,29 @@ test("builds the expected Meta placements", () => {
   ]);
 });
 
+test("routes advanced overrides only to their platform plan", () => {
+  const input = createValidInput();
+
+  input.overrides = {
+    meta: {
+      conversionEvent: "PURCHASE",
+    },
+    tiktok: {
+      optimizationMode: "CONVERSION",
+    },
+  };
+
+  const campaign = createUniversalCampaign(input);
+  const plans = buildPlatformPlans(campaign);
+
+  assert.deepEqual(plans.meta.overrides, {
+    conversionEvent: "PURCHASE",
+  });
+  assert.deepEqual(plans.tiktok.overrides, {
+    optimizationMode: "CONVERSION",
+  });
+});
+
 test("only builds TikTok plan when Meta is disabled", () => {
   const input = createValidInput();
 
