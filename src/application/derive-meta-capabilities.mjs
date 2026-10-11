@@ -132,7 +132,8 @@ export function deriveMetaCapabilities(snapshot) {
   }
 
   let canOptimizeForPurchase;
-  const purchaseStatus = snapshot.tracking?.purchaseEvent?.status;
+  const purchaseEvent = snapshot.tracking?.purchaseEvent ?? {};
+  const purchaseStatus = purchaseEvent.status;
 
   if (!canUseSelectedPixel.available) {
     canOptimizeForPurchase = capability(
@@ -148,6 +149,24 @@ export function deriveMetaCapabilities(snapshot) {
     canOptimizeForPurchase = capability(
       NEEDS_SETUP,
       "Purchase tracking needs setup before Relay can verify Purchase optimization."
+    );
+  } else if (purchaseStatus === "NEEDS_CHECK") {
+    canOptimizeForPurchase = capability(
+      UNKNOWN,
+      purchaseEvent.message ??
+        "The selected Meta Pixel/Dataset has not fired recently. Verify tracking before activating ad spend."
+    );
+  } else if (purchaseStatus === "NOT_OBSERVED") {
+    canOptimizeForPurchase = capability(
+      UNKNOWN,
+      purchaseEvent.message ??
+        "The Pixel/Dataset has recent activity, but Relay did not observe a recent Purchase event."
+    );
+  } else if (purchaseStatus === "UNVERIFIED") {
+    canOptimizeForPurchase = capability(
+      UNKNOWN,
+      purchaseEvent.message ??
+        "Relay could not verify Purchase tracking health from Meta."
     );
   } else {
     canOptimizeForPurchase = capability(
