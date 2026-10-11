@@ -48,6 +48,14 @@ export default function NewCampaignPage() {
     headline: "",
     destinationUrl: "",
   });
+  const [creativeType, setCreativeType] = useState("IMAGE");
+  const [videoPreviewUrl, setVideoPreviewUrl] = useState(null);
+  const [videoUpload, setVideoUpload] = useState({
+    status: "IDLE",
+    videoId: null,
+    fileName: null,
+    error: "",
+  });
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -110,6 +118,14 @@ export default function NewCampaignPage() {
     loadProducts();
   }, []);
 
+  useEffect(() => {
+    return () => {
+      if (videoPreviewUrl) {
+        URL.revokeObjectURL(videoPreviewUrl);
+      }
+    };
+  }, [videoPreviewUrl]);
+
   const selectedProduct = useMemo(
     () =>
       products.find((product) => product.id === selectedProductId) || null,
@@ -119,6 +135,8 @@ export default function NewCampaignPage() {
   const currency = selectedProduct?.currency || "PEN";
   const hasSelectedPlatform = platforms.meta || platforms.tiktok;
   const hasBothPlatforms = platforms.meta && platforms.tiktok;
+  const canUploadMetaVideo =
+    platforms.meta && metaSetup?.status === "READY";
 
   useEffect(() => {
     if (!selectedProduct) {
@@ -129,6 +147,14 @@ export default function NewCampaignPage() {
       primaryText: `Discover ${selectedProduct.title}.`,
       headline: selectedProduct.title,
       destinationUrl: selectedProduct.destinationUrl || "",
+    });
+    setCreativeType("IMAGE");
+    setVideoPreviewUrl(null);
+    setVideoUpload({
+      status: "IDLE",
+      videoId: null,
+      fileName: null,
+      error: "",
     });
   }, [selectedProduct]);
 
@@ -179,6 +205,10 @@ export default function NewCampaignPage() {
     Number(budget.durationDays) > 0 &&
     hasSelectedPlatform;
 
+  const creativeIsReady =
+    creativeType === "IMAGE" ||
+    (videoUpload.status === "READY" && Boolean(videoUpload.videoId));
+
   function buildPlatformsInput() {
     return {
       meta: {
@@ -193,7 +223,7 @@ export default function NewCampaignPage() {
   }
 
   function buildCampaignInput() {
-    if (!selectedProduct) {
+    if (!selectedProduct || !creativeIsReady) {
       return null;
     }
 
@@ -233,10 +263,20 @@ export default function NewCampaignPage() {
       platforms: buildPlatformsInput(),
 
       creative: {
-        type: "IMAGE",
+        type: creativeType,
         primaryText: creative.primaryText,
         headline: creative.headline,
         destinationUrl: creative.destinationUrl,
+        thumbnailUrl: selectedProduct.imageUrl,
+        ...(creativeType === "VIDEO" && videoUpload.videoId
+          ? {
+              platformAssets: {
+                meta: {
+                  videoId: videoUpload.videoId,
+                },
+              },
+            }
+          : {}),
       },
     };
   }
@@ -435,6 +475,78 @@ export default function NewCampaignPage() {
     }
 
     setAllocationMode(nextMode);
+  }
+
+  async function uploadCreativeVideo(file) {
+    if (!file) {
+      return;
+    }
+
+    if (!canUploadMetaVideo) {
+      setVideoUpload({
+        status: "ERROR",
+        videoId: null,
+        fileName: file.name || null,
+        error: "Connect and select Meta before uploading a video.",
+      });
+      return;
+    }
+
+    if (
+      file.type &&
+      !String(file.type).toLowerCase().startsWith("video/")
+    ) {
+      setVideoUpload({
+        status: "ERROR",
+        videoId: null,
+        fileName: file.name || null,
+        error: "Choose a video file.",
+      });
+      return;
+    }
+
+    const nextPreviewUrl = URL.createObjectURL(file);
+    setVideoPreviewUrl(nextPreviewUrl);
+    setVideoUpload({
+      status: "UPLOADING",
+      videoId: null,
+      fileName: file.name || null,
+      error: "",
+    });
+
+    try {
+      const formData = new FormData();
+      formData.append("video", file);
+      formData.append(
+        "title",
+        `${selectedProduct?.title || "Relay"} - Video`
+      );
+
+      const response = await fetch("/api/meta/videos/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.videoId) {
+        throw new Error(data.error || "Could not upload video to Meta");
+      }
+
+      setVideoUpload({
+        status: "READY",
+        videoId: String(data.videoId),
+        fileName: data.fileName || file.name || null,
+        error: "",
+      });
+    } catch (error) {
+      setVideoUpload({
+        status: "ERROR",
+        videoId: null,
+        fileName: file.name || null,
+        error: error.message,
+      });
+    }
   }
 
   async function generateCampaignPlan() {
@@ -1116,21 +1228,111 @@ export default function NewCampaignPage() {
             <p className="eyebrow">CREATE CAMPAIGN</p>
             <h1 className="campaignTitle">Create your ad</h1>
             <p className="campaignSubtitle">
-              Customize the message people will see.
+              Choose an image or video, then customize the message people will
+              see.
             </p>
+
+            <div className="formSection">
+              <h2>Creative</h2>
+
+              <div className="platformGrid">
+                <button
+                  type="button"
+                  className={`platformCard ${creativeType === "IMAGE" ? "selected" : ""}`}
+                  onClick={() => setCreativeType("IMAGE")}
+                >
+                  <div>
+                    <strong>Image</strong>
+                    <span>Use the Shopify product image</span>
+                  </div>
+                  <div className="selectionIndicator">
+                    {creativeType === "IMAGE" ? "✓" : ""}
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  disabled={!canUploadMetaVideo}
+                  className={`platformCard ${creativeType === "VIDEO" ? "selected" : ""}`}
+                  onClick={() => {
+                    if (canUploadMetaVideo) {
+                      setCreativeType("VIDEO");
+                    }
+                  }}
+                >
+                  <div>
+                    <strong>Video</strong>
+                    <span>
+                      {canUploadMetaVideo
+                        ? "Upload one video and Relay handles Meta"
+                        : "Select and connect Meta to upload video"}
+                    </span>
+                  </div>
+                  <div className="selectionIndicator">
+                    {creativeType === "VIDEO" ? "✓" : ""}
+                  </div>
+                </button>
+              </div>
+
+              {creativeType === "VIDEO" && (
+                <>
+                  <label className="field">
+                    <span>Video file</span>
+                    <input
+                      type="file"
+                      accept="video/*"
+                      disabled={videoUpload.status === "UPLOADING"}
+                      onChange={(event) => {
+                        const file = event.target.files?.[0] ?? null;
+                        uploadCreativeVideo(file);
+                      }}
+                    />
+                  </label>
+
+                  {videoUpload.status === "UPLOADING" && (
+                    <p className="reviewDescription">
+                      Uploading video to Meta...
+                    </p>
+                  )}
+
+                  {videoUpload.status === "READY" && (
+                    <p className="reviewDescription">
+                      ✓ {videoUpload.fileName || "Video"} is ready. Relay will
+                      reuse this Meta video asset when the campaign is created.
+                    </p>
+                  )}
+
+                  {videoUpload.status === "ERROR" && (
+                    <p className="errorText">{videoUpload.error}</p>
+                  )}
+                </>
+              )}
+            </div>
 
             {selectedProduct && (
               <div className="creativePreview">
-                {selectedProduct.imageUrl && (
+                {creativeType === "VIDEO" && videoPreviewUrl ? (
+                  <video
+                    src={videoPreviewUrl}
+                    className="creativeImage"
+                    controls
+                    muted
+                    playsInline
+                  />
+                ) : selectedProduct.imageUrl ? (
                   <img
                     src={selectedProduct.imageUrl}
                     alt={selectedProduct.title}
                     className="creativeImage"
                   />
-                )}
+                ) : null}
 
                 <div className="creativePreviewContent">
-                  <span className="creativeLabel">AD PREVIEW</span>
+                  <span className="creativeLabel">
+                    {creativeType === "VIDEO"
+                      ? "VIDEO PREVIEW"
+                      : "AD PREVIEW"}
+                  </span>
                   <strong>
                     {creative.headline || selectedProduct.title}
                   </strong>
@@ -1195,9 +1397,12 @@ export default function NewCampaignPage() {
               <button
                 type="button"
                 className="continueButton"
+                disabled={!creativeIsReady || videoUpload.status === "UPLOADING"}
                 onClick={() => setStep(5)}
               >
-                Continue
+                {videoUpload.status === "UPLOADING"
+                  ? "Uploading..."
+                  : "Continue"}
               </button>
             </div>
           </>
@@ -1218,6 +1423,15 @@ export default function NewCampaignPage() {
               <div className="reviewRow">
                 <span>Product</span>
                 <strong>{selectedProduct?.title || "—"}</strong>
+              </div>
+
+              <div className="reviewRow">
+                <span>Creative</span>
+                <strong>
+                  {creativeType === "VIDEO"
+                    ? `Video${videoUpload.fileName ? ` · ${videoUpload.fileName}` : ""}`
+                    : "Image"}
+                </strong>
               </div>
 
               <div className="reviewRow">
@@ -1353,7 +1567,11 @@ export default function NewCampaignPage() {
                   type="button"
                   className="secondaryButton stepBackButton"
                   onClick={generateCampaignPlan}
-                  disabled={generatingPlan || !budgetIsCompatible}
+                  disabled={
+                    generatingPlan ||
+                    !budgetIsCompatible ||
+                    !creativeIsReady
+                  }
                 >
                   {generatingPlan ? "Checking..." : "View developer plan"}
                 </button>
@@ -1366,6 +1584,7 @@ export default function NewCampaignPage() {
                     launchingCampaign ||
                     !!launchResult ||
                     !budgetIsCompatible ||
+                    !creativeIsReady ||
                     !platforms.meta ||
                     platforms.tiktok
                   }
