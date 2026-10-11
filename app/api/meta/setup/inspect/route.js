@@ -2,6 +2,10 @@ import { loadMetaConnection } from "../../../../../src/application/meta-connecti
 import { inspectMetaSetup } from "../../../../../src/application/inspect-meta-setup.mjs";
 import { createMetaClient } from "../../../../../src/connectors/meta/client.mjs";
 import { getMetaInstagramAccounts } from "../../../../../src/connectors/meta/instagram-accounts.mjs";
+import {
+  getMetaPixelDetails,
+  getMetaPixelEventStats,
+} from "../../../../../src/connectors/meta/pixel-health.mjs";
 
 export async function GET() {
   try {
@@ -34,6 +38,8 @@ export async function GET() {
       connection,
       meta,
       getInstagramAccounts: getMetaInstagramAccounts,
+      getPixelDetails: getMetaPixelDetails,
+      getPixelEventStats: getMetaPixelEventStats,
     });
 
     return Response.json(inspection);
