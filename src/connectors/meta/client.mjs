@@ -120,6 +120,38 @@ function buildMetaTargetingAutomation({
   };
 }
 
+function buildMetaImageCreativeAdaptation(
+  creativeAdaptation = {}
+) {
+  const mode = String(
+    creativeAdaptation?.mode ?? "AUTOMATIC"
+  ).toUpperCase();
+
+  if (mode !== "AUTOMATIC") {
+    throw new Error(
+      `Unsupported Meta creative adaptation mode: ${mode}`
+    );
+  }
+
+  const creativeFeaturesSpec = {};
+
+  if (creativeAdaptation?.adaptToPlacement !== false) {
+    creativeFeaturesSpec.adapt_to_placement = {
+      enroll_status: "OPT_IN",
+    };
+  }
+
+  if (creativeAdaptation?.imageAutoCrop !== false) {
+    creativeFeaturesSpec.image_auto_crop = {
+      enroll_status: "OPT_IN",
+    };
+  }
+
+  return {
+    creative_features_spec: creativeFeaturesSpec,
+  };
+}
+
 export function createMetaClient({
   adAccountId,
   accessToken,
@@ -577,6 +609,11 @@ export function createMetaClient({
     imageUrl,
     callToAction = "SHOP_NOW",
     instagramActorId = null,
+    creativeAdaptation = {
+      mode: "AUTOMATIC",
+      adaptToPlacement: true,
+      imageAutoCrop: true,
+    },
   }) {
     if (!adAccountId) {
       throw new Error("Missing Meta ad account ID");
@@ -600,6 +637,9 @@ export function createMetaClient({
       objectStorySpec.instagram_actor_id = String(instagramActorId);
     }
 
+    const degreesOfFreedomSpec =
+      buildMetaImageCreativeAdaptation(creativeAdaptation);
+
     const response = await fetch(
       `${META_GRAPH_URL}/${getAdAccountNodeId(adAccountId)}/adcreatives`,
       {
@@ -611,6 +651,8 @@ export function createMetaClient({
           name,
           object_story_spec:
             JSON.stringify(objectStorySpec),
+          degrees_of_freedom_spec:
+            JSON.stringify(degreesOfFreedomSpec),
           access_token: accessToken,
         }),
       }
