@@ -38,6 +38,68 @@ test("supports manual audience and a positive Meta cost cap", () => {
   assert.equal(resolved.bidding.costCap, 12.5);
 });
 
+test("defaults Relay placements to Facebook and Instagram feed stories and reels", () => {
+  const resolved = resolveMetaAdvancedSettings();
+
+  assert.equal(resolved.placements.mode, "RECOMMENDED");
+  assert.deepEqual(
+    resolved.placements.publisherPlatforms,
+    ["FACEBOOK", "INSTAGRAM"]
+  );
+  assert.deepEqual(
+    resolved.placements.facebook,
+    ["FEED", "STORIES", "REELS"]
+  );
+  assert.deepEqual(
+    resolved.placements.instagram,
+    ["FEED", "STORIES", "REELS"]
+  );
+});
+
+test("supports manual Relay placement subsets", () => {
+  const resolved = resolveMetaAdvancedSettings({
+    placements: {
+      mode: "MANUAL",
+      facebook: ["FEED", "REELS"],
+      instagram: ["STORIES"],
+    },
+  });
+
+  assert.equal(resolved.placements.mode, "MANUAL");
+  assert.deepEqual(
+    resolved.placements.publisherPlatforms,
+    ["FACEBOOK", "INSTAGRAM"]
+  );
+  assert.deepEqual(
+    resolved.placements.facebook,
+    ["FEED", "REELS"]
+  );
+  assert.deepEqual(
+    resolved.placements.instagram,
+    ["STORIES"]
+  );
+});
+
+test("rejects placements for a disabled Meta publisher", () => {
+  assert.throws(
+    () =>
+      resolveMetaAdvancedSettings(
+        {
+          placements: {
+            mode: "MANUAL",
+            facebook: [],
+            instagram: ["REELS"],
+          },
+        },
+        {
+          facebookEnabled: true,
+          instagramEnabled: false,
+        }
+      ),
+    /Instagram placements cannot be selected/
+  );
+});
+
 test("rejects an unsupported Meta audience strategy", () => {
   assert.throws(
     () =>
