@@ -56,6 +56,18 @@ test("encodes Relay gender and Meta publisher selection in ad set targeting", as
     assert.equal(targeting.age_max, 35);
     assert.deepEqual(targeting.genders, [1]);
     assert.deepEqual(targeting.publisher_platforms, ["instagram"]);
+    assert.equal(
+      targeting.targeting_automation.advantage_audience,
+      1
+    );
+    assert.equal(
+      targeting.targeting_automation.individual_setting.age,
+      0
+    );
+    assert.equal(
+      targeting.targeting_automation.individual_setting.gender,
+      0
+    );
   } finally {
     globalThis.fetch = originalFetch;
   }
@@ -98,6 +110,45 @@ test("omits gender restriction for Everyone targeting", async () => {
     assert.deepEqual(
       capturedTargeting.publisher_platforms,
       ["facebook", "instagram"]
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("disables Advantage+ audience when Relay uses manual audience strategy", async () => {
+  const originalFetch = globalThis.fetch;
+  let capturedTargeting = null;
+
+  globalThis.fetch = async (_url, options = {}) => {
+    capturedTargeting = JSON.parse(options.body.get("targeting"));
+    return createJsonResponse({ id: "adset-123" });
+  };
+
+  try {
+    const meta = createMetaClient({
+      adAccountId: "act_123",
+      accessToken: "fake-token",
+    });
+
+    await meta.createAdSet({
+      name: "Manual Audience Ad Set",
+      campaignId: "campaign-123",
+      budgetMode: "TOTAL",
+      lifetimeBudget: 5000,
+      startTime: "2026-10-10T12:00:00.000Z",
+      endTime: "2026-10-17T12:00:00.000Z",
+      countries: ["PE"],
+      advantageAudience: false,
+      optimizationGoal: "OFFSITE_CONVERSIONS",
+      pixelId: "pixel-123",
+      conversionEvent: "PURCHASE",
+      status: "PAUSED",
+    });
+
+    assert.deepEqual(
+      capturedTargeting.targeting_automation,
+      { advantage_audience: 0 }
     );
   } finally {
     globalThis.fetch = originalFetch;
@@ -187,6 +238,45 @@ test("omits ad set budget fields when the campaign owns the budget", async () =>
     assert.equal(capturedBody.get("daily_budget"), null);
     assert.equal(capturedBody.get("lifetime_budget"), null);
     assert.equal(capturedBody.get("bid_strategy"), null);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("sends a cost cap bid amount on the ad set while campaign budget owns bidding strategy", async () => {
+  const originalFetch = globalThis.fetch;
+  let capturedBody = null;
+
+  globalThis.fetch = async (_url, options = {}) => {
+    capturedBody = options.body;
+    return createJsonResponse({ id: "adset-123" });
+  };
+
+  try {
+    const meta = createMetaClient({
+      adAccountId: "act_123",
+      accessToken: "fake-token",
+    });
+
+    await meta.createAdSet({
+      name: "Cost Cap Ad Set",
+      campaignId: "campaign-123",
+      budgetStrategy: "CAMPAIGN",
+      budgetMode: "TOTAL",
+      startTime: "2026-10-10T12:00:00.000Z",
+      endTime: "2026-10-17T12:00:00.000Z",
+      countries: ["PE"],
+      optimizationGoal: "OFFSITE_CONVERSIONS",
+      bidAmount: 1250,
+      pixelId: "pixel-123",
+      conversionEvent: "PURCHASE",
+      status: "PAUSED",
+    });
+
+    assert.equal(capturedBody.get("bid_amount"), "1250");
+    assert.equal(capturedBody.get("bid_strategy"), null);
+    assert.equal(capturedBody.get("daily_budget"), null);
+    assert.equal(capturedBody.get("lifetime_budget"), null);
   } finally {
     globalThis.fetch = originalFetch;
   }
