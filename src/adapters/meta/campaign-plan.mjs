@@ -56,6 +56,8 @@ export function buildMetaCampaignPlan(campaign) {
       callToAction: campaign.creative.callToAction,
     },
 
+    overrides: campaign.overrides?.meta ?? {},
+
     sourceCampaignVersion: campaign.version,
   };
 }
