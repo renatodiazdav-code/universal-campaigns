@@ -4,7 +4,10 @@ export async function refreshMetaSetupSnapshot({
   connection,
   meta,
   getInstagramAccounts,
+  getPixelDetails = null,
+  getPixelEventStats = null,
   saveConnection,
+  now = new Date(),
 }) {
   if (!connection?.accessToken) {
     throw new Error("Meta is not connected");
@@ -18,6 +21,9 @@ export async function refreshMetaSetupSnapshot({
     connection,
     meta,
     getInstagramAccounts,
+    getPixelDetails,
+    getPixelEventStats,
+    now,
   });
 
   const updatedConnection = {
