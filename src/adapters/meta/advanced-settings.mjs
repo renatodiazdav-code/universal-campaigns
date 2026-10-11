@@ -150,6 +150,16 @@ function resolveMetaPlacements(
   };
 }
 
+function resolveMetaCreativeAdaptation() {
+  return {
+    mode: "AUTOMATIC",
+    adaptToPlacement: true,
+    imageAutoCrop: true,
+    videoAutoCrop: true,
+    generativeExpansion: false,
+  };
+}
+
 export function resolveMetaAdvancedSettings(
   overrides = {},
   platformContext = {}
@@ -220,5 +230,9 @@ export function resolveMetaAdvancedSettings(
       metaOverrides,
       platformContext
     ),
+
+    // Relay owns this preset in the MVP. We adapt the uploaded creative
+    // to the selected placements without silently removing placements.
+    creativeAdaptation: resolveMetaCreativeAdaptation(),
   };
 }
