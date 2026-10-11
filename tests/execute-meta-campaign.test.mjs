@@ -171,6 +171,14 @@ test("executes a TOTAL Universal Campaign with Meta campaign lifetime budget", a
     calls[1].input.publisherPlatforms,
     ["FACEBOOK", "INSTAGRAM"]
   );
+  assert.deepEqual(
+    calls[1].input.facebookPositions,
+    ["FEED", "STORIES", "REELS"]
+  );
+  assert.deepEqual(
+    calls[1].input.instagramPositions,
+    ["FEED", "STORIES", "REELS"]
+  );
   assert.equal(
     calls[1].input.startTime,
     "2026-10-10T12:00:00.000Z"
@@ -198,6 +206,18 @@ test("executes a TOTAL Universal Campaign with Meta campaign lifetime budget", a
   assert.deepEqual(
     result.configuration.placements,
     ["FACEBOOK", "INSTAGRAM"]
+  );
+  assert.equal(
+    result.configuration.placementSettings.mode,
+    "RECOMMENDED"
+  );
+  assert.deepEqual(
+    result.configuration.placementSettings.facebook,
+    ["FEED", "STORIES", "REELS"]
+  );
+  assert.deepEqual(
+    result.configuration.placementSettings.instagram,
+    ["FEED", "STORIES", "REELS"]
   );
 });
 
@@ -263,6 +283,11 @@ test("passes gender and selected Meta publishers into the ad set", async () => {
     calls[1].input.publisherPlatforms,
     ["INSTAGRAM"]
   );
+  assert.deepEqual(calls[1].input.facebookPositions, []);
+  assert.deepEqual(
+    calls[1].input.instagramPositions,
+    ["FEED", "STORIES", "REELS"]
+  );
   assert.equal(result.configuration.audience.gender, "MALE");
   assert.deepEqual(
     result.configuration.placements,
@@ -309,4 +334,59 @@ test("executes Meta Cost Cap override while keeping campaign budget", async () =
   assert.equal(result.configuration.bidding.strategy, "COST_CAP");
   assert.equal(result.configuration.bidding.costCap, 12.5);
   assert.equal(result.configuration.bidding.bidAmount, 1250);
+});
+
+test("executes manual Facebook and Instagram placement subsets", async () => {
+  const input = createInput({
+    amount: 50,
+    meta: 50,
+    tiktok: 0,
+  });
+
+  input.overrides = {
+    meta: {
+      placements: {
+        mode: "MANUAL",
+        facebook: ["FEED", "REELS"],
+        instagram: ["STORIES"],
+      },
+    },
+  };
+
+  const campaign = createUniversalCampaign(input);
+  const calls = [];
+
+  const result = await executeMetaCampaign({
+    campaign,
+    connection: createConnection(),
+    metaClient: createFakeMeta(calls),
+    now: new Date("2026-10-10T12:00:00.000Z"),
+  });
+
+  assert.equal(result.status, "CREATED");
+  assert.deepEqual(
+    calls[1].input.publisherPlatforms,
+    ["FACEBOOK", "INSTAGRAM"]
+  );
+  assert.deepEqual(
+    calls[1].input.facebookPositions,
+    ["FEED", "REELS"]
+  );
+  assert.deepEqual(
+    calls[1].input.instagramPositions,
+    ["STORIES"]
+  );
+
+  assert.equal(
+    result.configuration.placementSettings.mode,
+    "MANUAL"
+  );
+  assert.deepEqual(
+    result.configuration.placementSettings.facebook,
+    ["FEED", "REELS"]
+  );
+  assert.deepEqual(
+    result.configuration.placementSettings.instagram,
+    ["STORIES"]
+  );
 });
