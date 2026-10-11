@@ -107,6 +107,7 @@ export async function executeMetaCampaign({
   const created = {
     campaignId: null,
     adSetId: null,
+    videoId: null,
     creativeId: null,
     adId: null,
   };
@@ -173,6 +174,18 @@ export async function executeMetaCampaign({
 
     created.adSetId = adSet.id;
 
+    let videoId = null;
+
+    if (metaPlan.creative.type === "VIDEO") {
+      const video = await meta.createAdVideo({
+        fileUrl: metaPlan.creative.videoUrl,
+        title: `${campaign.name} - Video`,
+      });
+
+      videoId = video.id;
+      created.videoId = videoId;
+    }
+
     const creative = await meta.createAdCreative({
       name: `${campaign.name} - Creative`,
       pageId: page.id,
@@ -180,7 +193,12 @@ export async function executeMetaCampaign({
       message: metaPlan.creative.primaryText,
       headline: metaPlan.creative.headline,
       destinationUrl: metaPlan.creative.destinationUrl,
-      imageUrl: metaPlan.creative.imageUrl,
+      imageUrl:
+        metaPlan.creative.type === "VIDEO"
+          ? metaPlan.creative.thumbnailUrl
+          : metaPlan.creative.imageUrl,
+      creativeType: metaPlan.creative.type,
+      videoId,
       callToAction: metaPlan.creative.callToAction,
       instagramActorId: selectedInstagramAccount?.id ?? null,
       creativeAdaptation: metaPlan.creative.adaptation,
@@ -211,6 +229,8 @@ export async function executeMetaCampaign({
 
       creative: {
         id: creative.id,
+        type: metaPlan.creative.type,
+        videoId,
       },
 
       ad: {
@@ -222,6 +242,8 @@ export async function executeMetaCampaign({
         optimizationGoal: "OFFSITE_CONVERSIONS",
         conversionEvent: "PURCHASE",
         callToAction: metaPlan.creative.callToAction,
+        creativeType: metaPlan.creative.type,
+        videoId,
         audience: {
           countries: metaPlan.audience.countries,
           ageMin: metaPlan.audience.ageMin,
