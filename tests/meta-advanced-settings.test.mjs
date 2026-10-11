@@ -22,6 +22,18 @@ test("defaults Meta to Advantage+ audience and lowest cost bidding", () => {
   assert.equal(resolved.bidding.costCap, null);
 });
 
+test("defaults Meta creative adaptation to automatic fitting without generative expansion", () => {
+  const resolved = resolveMetaAdvancedSettings();
+
+  assert.deepEqual(resolved.creativeAdaptation, {
+    mode: "AUTOMATIC",
+    adaptToPlacement: true,
+    imageAutoCrop: true,
+    videoAutoCrop: true,
+    generativeExpansion: false,
+  });
+});
+
 test("supports manual audience and a positive Meta cost cap", () => {
   const resolved = resolveMetaAdvancedSettings({
     audienceStrategy: "MANUAL",
