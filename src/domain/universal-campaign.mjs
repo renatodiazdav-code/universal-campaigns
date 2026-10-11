@@ -1,4 +1,5 @@
 const BUDGET_MODES = new Set(["TOTAL", "DAILY"]);
+const CREATIVE_TYPES = new Set(["IMAGE", "VIDEO"]);
 const CALL_TO_ACTIONS = new Set([
   "SHOP_NOW",
   "LEARN_MORE",
@@ -96,6 +97,25 @@ export function createUniversalCampaign(input) {
 
   if (!input.creative?.type) {
     throw new Error("Creative type is required");
+  }
+
+  const creativeType = String(
+    input.creative.type
+  ).toUpperCase();
+
+  if (!CREATIVE_TYPES.has(creativeType)) {
+    throw new Error(
+      `Unsupported creative type: ${creativeType}`
+    );
+  }
+
+  const videoUrl =
+    input.creative?.videoUrl?.trim?.() || null;
+
+  if (creativeType === "VIDEO" && !videoUrl) {
+    throw new Error(
+      "Video URL is required for VIDEO creatives"
+    );
   }
 
   const callToAction = String(
@@ -213,13 +233,18 @@ export function createUniversalCampaign(input) {
     },
 
     creative: {
-      type: input.creative.type,
+      type: creativeType,
       primaryText:
         input.creative.primaryText ?? "",
       headline: input.creative.headline ?? "",
       destinationUrl:
         input.creative.destinationUrl ??
         input.product.destinationUrl ??
+        null,
+      videoUrl,
+      thumbnailUrl:
+        input.creative.thumbnailUrl ??
+        input.product.imageUrl ??
         null,
       callToAction,
     },
