@@ -119,13 +119,18 @@ export async function executeMetaCampaign({
       now,
     });
 
+    const bidAmount =
+      metaPlan.bidding.costCap == null
+        ? null
+        : toMinorUnits(metaPlan.bidding.costCap);
+
     const metaCampaign = await meta.createCampaign({
       name: campaign.name,
       objective: metaPlan.campaign.objective,
       budgetMode: schedule.budgetMode,
       dailyBudget: schedule.dailyBudget,
       lifetimeBudget: schedule.lifetimeBudget,
-      bidStrategy: "LOWEST_COST_WITHOUT_CAP",
+      bidStrategy: metaPlan.bidding.apiStrategy,
       startTime: schedule.startTime,
       endTime: schedule.endTime,
       status: "PAUSED",
@@ -146,8 +151,15 @@ export async function executeMetaCampaign({
       ageMax: metaPlan.audience.ageMax,
       gender: metaPlan.audience.gender,
       publisherPlatforms: metaPlan.placements,
+      advantageAudience:
+        metaPlan.audience.advantageAudience,
+      allowAgeExpansion:
+        metaPlan.audience.allowAgeExpansion,
+      allowGenderExpansion:
+        metaPlan.audience.allowGenderExpansion,
 
       optimizationGoal: "OFFSITE_CONVERSIONS",
+      bidAmount,
       pixelId: pixel.id,
       conversionEvent: "PURCHASE",
 
@@ -209,6 +221,15 @@ export async function executeMetaCampaign({
           ageMin: metaPlan.audience.ageMin,
           ageMax: metaPlan.audience.ageMax,
           gender: metaPlan.audience.gender,
+          strategy: metaPlan.audience.strategy,
+          advantageAudience:
+            metaPlan.audience.advantageAudience,
+        },
+        bidding: {
+          strategy: metaPlan.bidding.strategy,
+          apiStrategy: metaPlan.bidding.apiStrategy,
+          costCap: metaPlan.bidding.costCap,
+          bidAmount,
         },
         placements: metaPlan.placements,
         pixel: {
