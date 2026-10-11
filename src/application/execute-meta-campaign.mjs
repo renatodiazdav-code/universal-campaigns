@@ -174,9 +174,12 @@ export async function executeMetaCampaign({
 
     created.adSetId = adSet.id;
 
-    let videoId = null;
+    let videoId = metaPlan.creative.metaVideoId ?? null;
 
-    if (metaPlan.creative.type === "VIDEO") {
+    if (
+      metaPlan.creative.type === "VIDEO" &&
+      !videoId
+    ) {
       const video = await meta.createAdVideo({
         fileUrl: metaPlan.creative.videoUrl,
         title: `${campaign.name} - Video`,
