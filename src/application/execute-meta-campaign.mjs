@@ -150,7 +150,12 @@ export async function executeMetaCampaign({
       ageMin: metaPlan.audience.ageMin,
       ageMax: metaPlan.audience.ageMax,
       gender: metaPlan.audience.gender,
-      publisherPlatforms: metaPlan.placements,
+      publisherPlatforms:
+        metaPlan.placementSettings.publisherPlatforms,
+      facebookPositions:
+        metaPlan.placementSettings.facebook,
+      instagramPositions:
+        metaPlan.placementSettings.instagram,
       advantageAudience:
         metaPlan.audience.advantageAudience,
       allowAgeExpansion:
@@ -232,6 +237,11 @@ export async function executeMetaCampaign({
           bidAmount,
         },
         placements: metaPlan.placements,
+        placementSettings: {
+          mode: metaPlan.placementSettings.mode,
+          facebook: metaPlan.placementSettings.facebook,
+          instagram: metaPlan.placementSettings.instagram,
+        },
         pixel: {
           id: pixel.id,
           name: pixel.name,
