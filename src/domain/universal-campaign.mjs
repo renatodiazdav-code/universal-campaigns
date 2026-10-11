@@ -47,6 +47,30 @@ function normalizeCampaignOverrides(value) {
   };
 }
 
+function normalizeCreativePlatformAssets(value) {
+  if (value == null) {
+    return {
+      meta: {},
+      tiktok: {},
+    };
+  }
+
+  if (typeof value !== "object" || Array.isArray(value)) {
+    throw new Error("Creative platform assets must be an object");
+  }
+
+  return {
+    meta: normalizePlatformOverrides(
+      value.meta,
+      "Meta creative asset"
+    ),
+    tiktok: normalizePlatformOverrides(
+      value.tiktok,
+      "TikTok creative asset"
+    ),
+  };
+}
+
 export function createUniversalCampaign(input) {
   if (!input.name?.trim()) {
     throw new Error("Campaign name is required");
@@ -109,12 +133,24 @@ export function createUniversalCampaign(input) {
     );
   }
 
+  const platformAssets = normalizeCreativePlatformAssets(
+    input.creative?.platformAssets
+  );
+
   const videoUrl =
     input.creative?.videoUrl?.trim?.() || null;
+  const hasUploadedVideoAsset = Boolean(
+    platformAssets.meta?.videoId ||
+      platformAssets.tiktok?.videoId
+  );
 
-  if (creativeType === "VIDEO" && !videoUrl) {
+  if (
+    creativeType === "VIDEO" &&
+    !videoUrl &&
+    !hasUploadedVideoAsset
+  ) {
     throw new Error(
-      "Video URL is required for VIDEO creatives"
+      "A video URL or uploaded video asset is required for VIDEO creatives"
     );
   }
 
@@ -246,6 +282,7 @@ export function createUniversalCampaign(input) {
         input.creative.thumbnailUrl ??
         input.product.imageUrl ??
         null,
+      platformAssets,
       callToAction,
     },
 
