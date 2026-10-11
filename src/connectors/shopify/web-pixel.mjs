@@ -23,6 +23,15 @@ function classifyGraphqlErrors(errors = []) {
     };
   }
 
+  if (/no web pixel was found for this app/i.test(message)) {
+    return {
+      status: "NOT_CONFIGURED",
+      hasAccess: true,
+      webPixel: null,
+      error: null,
+    };
+  }
+
   return {
     status: "ERROR",
     hasAccess: false,
