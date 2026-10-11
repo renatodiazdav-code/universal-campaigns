@@ -157,10 +157,62 @@ export function createMetaClient({
     objective,
     specialAdCategories = [],
     isAdsetBudgetSharingEnabled = false,
+    budgetMode = null,
+    dailyBudget = null,
+    lifetimeBudget = null,
+    bidStrategy = "LOWEST_COST_WITHOUT_CAP",
+    startTime = null,
+    endTime = null,
     status = "PAUSED",
   }) {
     if (!adAccountId) {
       throw new Error("Missing Meta ad account ID");
+    }
+
+    const body = {
+      name,
+      objective,
+      special_ad_categories:
+        JSON.stringify(specialAdCategories),
+      status,
+      access_token: accessToken,
+    };
+
+    if (budgetMode != null) {
+      const mode = String(budgetMode).toUpperCase();
+
+      if (mode === "DAILY") {
+        if (!dailyBudget || dailyBudget <= 0) {
+          throw new Error(
+            "Meta campaign daily budget must be greater than zero"
+          );
+        }
+        body.daily_budget = String(dailyBudget);
+      } else if (mode === "TOTAL") {
+        if (!lifetimeBudget || lifetimeBudget <= 0) {
+          throw new Error(
+            "Meta campaign lifetime budget must be greater than zero"
+          );
+        }
+        body.lifetime_budget = String(lifetimeBudget);
+      } else {
+        throw new Error(
+          "Meta campaign budget mode must be TOTAL or DAILY"
+        );
+      }
+
+      body.bid_strategy = bidStrategy;
+
+      if (startTime) {
+        body.start_time = startTime;
+      }
+
+      if (endTime) {
+        body.stop_time = endTime;
+      }
+    } else {
+      body.is_adset_budget_sharing_enabled =
+        String(isAdsetBudgetSharingEnabled);
     }
 
     const response = await fetch(
@@ -170,16 +222,7 @@ export function createMetaClient({
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",
         },
-        body: new URLSearchParams({
-          name,
-          objective,
-          special_ad_categories:
-            JSON.stringify(specialAdCategories),
-          is_adset_budget_sharing_enabled:
-            String(isAdsetBudgetSharingEnabled),
-          status,
-          access_token: accessToken,
-        }),
+        body: new URLSearchParams(body),
       }
     );
 
@@ -196,7 +239,8 @@ export function createMetaClient({
 
   async function getCampaign(campaignId) {
     const params = new URLSearchParams({
-      fields: "id,name,status,effective_status,objective",
+      fields:
+        "id,name,status,effective_status,objective,daily_budget,lifetime_budget,bid_strategy,start_time,stop_time",
       access_token: accessToken,
     });
 
@@ -261,6 +305,7 @@ export function createMetaClient({
   async function createAdSet({
     name,
     campaignId,
+    budgetStrategy = "AD_SET",
     budgetMode = "TOTAL",
     dailyBudget = null,
     lifetimeBudget = null,
@@ -272,6 +317,7 @@ export function createMetaClient({
     gender = "ALL",
     publisherPlatforms = null,
     optimizationGoal = "LINK_CLICKS",
+    bidStrategy = "LOWEST_COST_WITHOUT_CAP",
     pixelId = null,
     conversionEvent = "PURCHASE",
     status = "PAUSED",
@@ -280,24 +326,33 @@ export function createMetaClient({
       throw new Error("Missing Meta ad account ID");
     }
 
+    const strategy = String(budgetStrategy).toUpperCase();
     const mode = String(budgetMode).toUpperCase();
 
-    if (mode === "DAILY") {
-      if (!dailyBudget || dailyBudget <= 0) {
-        throw new Error(
-          "Meta daily budget must be greater than zero"
-        );
-      }
-    } else if (mode === "TOTAL") {
-      if (!lifetimeBudget || lifetimeBudget <= 0) {
+    if (strategy !== "CAMPAIGN" && strategy !== "AD_SET") {
+      throw new Error(
+        "Meta budget strategy must be CAMPAIGN or AD_SET"
+      );
+    }
+
+    if (mode !== "DAILY" && mode !== "TOTAL") {
+      throw new Error(
+        "Meta budget mode must be TOTAL or DAILY"
+      );
+    }
+
+    if (strategy === "AD_SET") {
+      if (mode === "DAILY") {
+        if (!dailyBudget || dailyBudget <= 0) {
+          throw new Error(
+            "Meta daily budget must be greater than zero"
+          );
+        }
+      } else if (!lifetimeBudget || lifetimeBudget <= 0) {
         throw new Error(
           "Meta lifetime budget must be greater than zero"
         );
       }
-    } else {
-      throw new Error(
-        "Meta budget mode must be TOTAL or DAILY"
-      );
     }
 
     if (!startTime || !endTime) {
@@ -343,16 +398,19 @@ export function createMetaClient({
       end_time: endTime,
       billing_event: "IMPRESSIONS",
       optimization_goal: optimizationGoal,
-      bid_strategy: "LOWEST_COST_WITHOUT_CAP",
       targeting: JSON.stringify(targeting),
       status,
       access_token: accessToken,
     };
 
-    if (mode === "DAILY") {
-      body.daily_budget = String(dailyBudget);
-    } else {
-      body.lifetime_budget = String(lifetimeBudget);
+    if (strategy === "AD_SET") {
+      body.bid_strategy = bidStrategy;
+
+      if (mode === "DAILY") {
+        body.daily_budget = String(dailyBudget);
+      } else {
+        body.lifetime_budget = String(lifetimeBudget);
+      }
     }
 
     if (optimizationGoal === "OFFSITE_CONVERSIONS") {
