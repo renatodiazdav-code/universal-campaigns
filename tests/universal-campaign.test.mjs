@@ -74,7 +74,43 @@ test("creates a valid Universal Campaign", () => {
   assert.equal(campaign.budget.total, 100);
   assert.equal(campaign.budget.allocation.meta, 60);
   assert.equal(campaign.budget.allocation.tiktok, 40);
+  assert.deepEqual(campaign.overrides, {
+    meta: {},
+    tiktok: {},
+  });
   assert.equal(campaign.status, "DRAFT");
+});
+
+test("preserves platform-specific advanced overrides", () => {
+  const input = createValidInput();
+
+  input.overrides = {
+    meta: {
+      conversionEvent: "PURCHASE",
+    },
+    tiktok: {
+      optimizationMode: "CONVERSION",
+    },
+  };
+
+  const campaign = createUniversalCampaign(input);
+
+  assert.deepEqual(campaign.overrides.meta, {
+    conversionEvent: "PURCHASE",
+  });
+  assert.deepEqual(campaign.overrides.tiktok, {
+    optimizationMode: "CONVERSION",
+  });
+});
+
+test("rejects malformed campaign overrides", () => {
+  const input = createValidInput();
+  input.overrides = [];
+
+  assert.throws(
+    () => createUniversalCampaign(input),
+    /Campaign overrides must be an object/
+  );
 });
 
 test("normalizes a daily budget and projected total", () => {
