@@ -119,7 +119,7 @@ function createFakeMeta(calls) {
   };
 }
 
-test("executes a TOTAL Universal Campaign with Meta lifetime budget", async () => {
+test("executes a TOTAL Universal Campaign with Meta campaign lifetime budget", async () => {
   const campaign = createUniversalCampaign(
     createInput()
   );
@@ -140,7 +140,19 @@ test("executes a TOTAL Universal Campaign with Meta lifetime budget", async () =
   assert.equal(result.ad.id, "ad-123");
   assert.equal(calls.length, 4);
 
+  assert.equal(calls[0].method, "createCampaign");
+  assert.equal(calls[0].input.budgetMode, "TOTAL");
+  assert.equal(calls[0].input.lifetimeBudget, 6000);
+  assert.equal(calls[0].input.dailyBudget, null);
+  assert.equal(
+    calls[0].input.bidStrategy,
+    "LOWEST_COST_WITHOUT_CAP"
+  );
+
   assert.equal(calls[1].method, "createAdSet");
+  assert.equal(calls[1].input.budgetStrategy, "CAMPAIGN");
+  assert.equal(calls[1].input.dailyBudget, undefined);
+  assert.equal(calls[1].input.lifetimeBudget, undefined);
   assert.equal(
     calls[1].input.optimizationGoal,
     "OFFSITE_CONVERSIONS"
@@ -150,9 +162,6 @@ test("executes a TOTAL Universal Campaign with Meta lifetime budget", async () =
     calls[1].input.conversionEvent,
     "PURCHASE"
   );
-  assert.equal(calls[1].input.budgetMode, "TOTAL");
-  assert.equal(calls[1].input.lifetimeBudget, 6000);
-  assert.equal(calls[1].input.dailyBudget, null);
   assert.equal(calls[1].input.gender, "ALL");
   assert.deepEqual(
     calls[1].input.publisherPlatforms,
@@ -169,6 +178,7 @@ test("executes a TOTAL Universal Campaign with Meta lifetime budget", async () =
   assert.equal(calls[1].input.status, "PAUSED");
   assert.equal(calls[3].input.status, "PAUSED");
 
+  assert.equal(result.configuration.budgetStrategy, "CAMPAIGN");
   assert.equal(result.configuration.budgetMode, "TOTAL");
   assert.equal(result.configuration.lifetimeBudget, 6000);
   assert.equal(result.configuration.dailyBudget, null);
@@ -179,7 +189,7 @@ test("executes a TOTAL Universal Campaign with Meta lifetime budget", async () =
   );
 });
 
-test("executes a DAILY Universal Campaign with Meta daily budget and an end date", async () => {
+test("executes a DAILY Universal Campaign with Meta campaign daily budget and an end date", async () => {
   const campaign = createUniversalCampaign(
     createInput({
       budgetMode: "DAILY",
@@ -198,14 +208,18 @@ test("executes a DAILY Universal Campaign with Meta daily budget and an end date
   });
 
   assert.equal(result.status, "CREATED");
-  assert.equal(calls[1].input.budgetMode, "DAILY");
-  assert.equal(calls[1].input.dailyBudget, 3000);
-  assert.equal(calls[1].input.lifetimeBudget, null);
+  assert.equal(calls[0].input.budgetMode, "DAILY");
+  assert.equal(calls[0].input.dailyBudget, 3000);
+  assert.equal(calls[0].input.lifetimeBudget, null);
+  assert.equal(calls[1].input.budgetStrategy, "CAMPAIGN");
+  assert.equal(calls[1].input.dailyBudget, undefined);
+  assert.equal(calls[1].input.lifetimeBudget, undefined);
   assert.equal(
     calls[1].input.endTime,
     "2026-10-17T12:00:00.000Z"
   );
 
+  assert.equal(result.configuration.budgetStrategy, "CAMPAIGN");
   assert.equal(result.configuration.budgetMode, "DAILY");
   assert.equal(result.configuration.dailyBudget, 3000);
   assert.equal(result.configuration.lifetimeBudget, null);
