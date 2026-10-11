@@ -30,6 +30,19 @@ export function buildMetaCampaignPlan(campaign) {
     }
   );
 
+  const metaVideoId =
+    campaign.creative.platformAssets?.meta?.videoId ?? null;
+
+  if (
+    campaign.creative.type === "VIDEO" &&
+    !metaVideoId &&
+    !campaign.creative.videoUrl
+  ) {
+    throw new Error(
+      "Meta VIDEO creative needs an uploaded Meta video asset or a video URL"
+    );
+  }
+
   return {
     platform: "META",
 
@@ -72,6 +85,7 @@ export function buildMetaCampaignPlan(campaign) {
       destinationUrl: campaign.creative.destinationUrl,
       imageUrl: campaign.product.imageUrl,
       videoUrl: campaign.creative.videoUrl ?? null,
+      metaVideoId,
       thumbnailUrl:
         campaign.creative.thumbnailUrl ??
         campaign.product.imageUrl ??
