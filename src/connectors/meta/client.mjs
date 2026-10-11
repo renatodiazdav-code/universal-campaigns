@@ -664,6 +664,7 @@ export function createMetaClient({
     headline,
     destinationUrl,
     imageUrl,
+    imageHash = null,
     creativeType = "IMAGE",
     videoId = null,
     callToAction = "SHOP_NOW",
@@ -690,15 +691,26 @@ export function createMetaClient({
     };
 
     if (type === "IMAGE") {
+      if (!imageHash && !imageUrl) {
+        throw new Error(
+          "Meta image hash or image URL is required for IMAGE creatives"
+        );
+      }
+
       objectStorySpec.link_data = {
         link: destinationUrl,
         message,
         name: headline,
-        picture: imageUrl,
         call_to_action: {
           type: callToAction,
         },
       };
+
+      if (imageHash) {
+        objectStorySpec.link_data.image_hash = String(imageHash);
+      } else {
+        objectStorySpec.link_data.picture = imageUrl;
+      }
     } else {
       if (!videoId) {
         throw new Error("Meta video ID is required for VIDEO creatives");
