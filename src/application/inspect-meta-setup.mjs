@@ -1,3 +1,5 @@
+import { inspectMetaPurchaseHealth } from "./inspect-meta-purchase-health.mjs";
+
 function chooseSelectedItem(items, selectedId) {
   if (!Array.isArray(items) || items.length === 0) {
     return null;
@@ -36,12 +38,15 @@ export async function inspectMetaSetup({
   connection,
   meta,
   getInstagramAccounts,
+  getPixelDetails = null,
+  getPixelEventStats = null,
+  now = new Date(),
 }) {
   if (!connection?.accessToken) {
     return {
       version: 1,
       status: "NOT_CONNECTED",
-      checkedAt: new Date().toISOString(),
+      checkedAt: new Date(now).toISOString(),
       issues: [
         {
           code: "META_NOT_CONNECTED",
@@ -77,7 +82,7 @@ export async function inspectMetaSetup({
         storedSetup.status === "NEEDS_SELECTION"
           ? "NEEDS_SELECTION"
           : "NEEDS_SETUP",
-      checkedAt: new Date().toISOString(),
+      checkedAt: new Date(now).toISOString(),
       selection: storedSetup,
       issues: [
         {
@@ -143,6 +148,22 @@ export async function inspectMetaSetup({
         }
       );
 
+  let purchaseEvent = {
+    status: "NOT_CHECKED",
+    message:
+      "Pixel presence is known, but purchase event health is not checked in this setup inspection.",
+  };
+
+  if (selectedPixel?.id) {
+    purchaseEvent = await inspectMetaPurchaseHealth({
+      pixel: selectedPixel,
+      accessToken: connection.accessToken,
+      getPixelDetails,
+      getPixelEventStats,
+      now,
+    });
+  }
+
   const issues = [];
 
   const adAccountActive = liveAdAccount?.account_status === 1;
@@ -188,6 +209,26 @@ export async function inspectMetaSetup({
     });
   }
 
+  if (purchaseEvent.status === "NEEDS_CHECK") {
+    issues.push({
+      code: "META_PIXEL_ACTIVITY_STALE",
+      severity: "WARNING",
+      message: purchaseEvent.message,
+    });
+  } else if (purchaseEvent.status === "NOT_OBSERVED") {
+    issues.push({
+      code: "META_PURCHASE_NOT_OBSERVED",
+      severity: "WARNING",
+      message: purchaseEvent.message,
+    });
+  } else if (purchaseEvent.status === "UNVERIFIED") {
+    issues.push({
+      code: "META_PURCHASE_HEALTH_UNVERIFIED",
+      severity: "WARNING",
+      message: purchaseEvent.message,
+    });
+  }
+
   if (instagramStatus === "DISCOVERY_ERROR") {
     issues.push({
       code: "META_INSTAGRAM_DISCOVERY_FAILED",
@@ -227,7 +268,7 @@ export async function inspectMetaSetup({
   return {
     version: 1,
     status,
-    checkedAt: new Date().toISOString(),
+    checkedAt: new Date(now).toISOString(),
 
     business: {
       status: "READY",
@@ -263,11 +304,7 @@ export async function inspectMetaSetup({
         pixels,
         count: pixels.length,
       },
-      purchaseEvent: {
-        status: "NOT_CHECKED",
-        message:
-          "Pixel presence is known, but purchase event health is not checked in Meta Setup Engine v1 yet.",
-      },
+      purchaseEvent,
     },
 
     issues,
