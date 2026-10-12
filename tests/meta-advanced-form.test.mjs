@@ -14,6 +14,12 @@ test("maps default Meta advanced form to Relay recommended overrides", () => {
 
   assert.deepEqual(overrides, {
     audienceStrategy: "ADVANTAGE_PLUS",
+    audience: {
+      mode: "ADVANTAGE_PLUS",
+      includedAudiences: [],
+      excludedAudiences: [],
+      detailedTargeting: [],
+    },
     bidding: {
       strategy: "LOWEST_COST",
     },
@@ -23,9 +29,39 @@ test("maps default Meta advanced form to Relay recommended overrides", () => {
   });
 });
 
-test("maps manual audience cost cap and manual placements", () => {
+test("maps specific audience selections cost cap and manual placements", () => {
   const overrides = buildMetaOverridesFromForm({
     audienceStrategy: "MANUAL",
+    includedAudiences: [
+      {
+        id: "ca-1",
+        name: "Website visitors",
+        subtype: "WEBSITE",
+        kind: "CUSTOM",
+      },
+      {
+        id: "la-1",
+        name: "Lookalike customers",
+        subtype: "LOOKALIKE",
+        kind: "LOOKALIKE",
+      },
+    ],
+    excludedAudiences: [
+      {
+        id: "ca-2",
+        name: "Purchasers",
+        subtype: "WEBSITE",
+        kind: "CUSTOM",
+      },
+    ],
+    detailedTargeting: [
+      {
+        id: "interest-1",
+        name: "Running",
+        type: "interests",
+        path: ["Interests", "Sports"],
+      },
+    ],
     biddingStrategy: "COST_CAP",
     costCap: "17.50",
     placementsMode: "MANUAL",
@@ -35,6 +71,39 @@ test("maps manual audience cost cap and manual placements", () => {
 
   assert.deepEqual(overrides, {
     audienceStrategy: "MANUAL",
+    audience: {
+      mode: "SPECIFIC",
+      includedAudiences: [
+        {
+          id: "ca-1",
+          name: "Website visitors",
+          subtype: "WEBSITE",
+          kind: "CUSTOM",
+        },
+        {
+          id: "la-1",
+          name: "Lookalike customers",
+          subtype: "LOOKALIKE",
+          kind: "LOOKALIKE",
+        },
+      ],
+      excludedAudiences: [
+        {
+          id: "ca-2",
+          name: "Purchasers",
+          subtype: "WEBSITE",
+          kind: "CUSTOM",
+        },
+      ],
+      detailedTargeting: [
+        {
+          id: "interest-1",
+          name: "Running",
+          type: "interests",
+          path: ["Interests", "Sports"],
+        },
+      ],
+    },
     bidding: {
       strategy: "COST_CAP",
       costCap: 17.5,
@@ -69,6 +138,7 @@ test("manual placements disable a publisher when none of its placements remain",
 test("rejects invalid cost cap and empty manual placements", () => {
   assert.deepEqual(
     validateMetaAdvancedForm({
+      audienceStrategy: "ADVANTAGE_PLUS",
       biddingStrategy: "COST_CAP",
       costCap: 0,
       placementsMode: "RECOMMENDED",
@@ -81,6 +151,7 @@ test("rejects invalid cost cap and empty manual placements", () => {
 
   assert.deepEqual(
     validateMetaAdvancedForm({
+      audienceStrategy: "ADVANTAGE_PLUS",
       biddingStrategy: "LOWEST_COST",
       placementsMode: "MANUAL",
       facebookPositions: [],
