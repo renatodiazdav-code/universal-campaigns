@@ -42,6 +42,10 @@ export function createDefaultMetaAdvancedForm() {
     detailedTargeting: [],
     biddingStrategy: "LOWEST_COST",
     costCap: "",
+    attributionMode: "AUTO",
+    clickAttributionDays: "7",
+    viewAttributionDays: "1",
+    engagedViewAttributionDays: "1",
     placementsMode: "RECOMMENDED",
     facebookPositions: [...DEFAULT_POSITIONS],
     instagramPositions: [...DEFAULT_POSITIONS],
@@ -54,6 +58,9 @@ export function buildMetaOverridesFromForm(form) {
   ).toUpperCase();
   const biddingStrategy = String(
     form?.biddingStrategy ?? "LOWEST_COST"
+  ).toUpperCase();
+  const attributionMode = String(
+    form?.attributionMode ?? "AUTO"
   ).toUpperCase();
   const placementsMode = String(
     form?.placementsMode ?? "RECOMMENDED"
@@ -83,6 +90,22 @@ export function buildMetaOverridesFromForm(form) {
     bidding.costCap = Number(form?.costCap);
   }
 
+  const attribution = {
+    mode: attributionMode,
+  };
+
+  if (attributionMode === "STANDARD") {
+    attribution.clickWindowDays = Number(
+      form?.clickAttributionDays ?? 7
+    );
+    attribution.viewWindowDays = Number(
+      form?.viewAttributionDays ?? 1
+    );
+    attribution.engagedViewWindowDays = Number(
+      form?.engagedViewAttributionDays ?? 1
+    );
+  }
+
   const placements = {
     mode: placementsMode,
   };
@@ -96,6 +119,7 @@ export function buildMetaOverridesFromForm(form) {
     audienceStrategy,
     audience,
     bidding,
+    attribution,
     placements,
   };
 }
@@ -172,6 +196,46 @@ export function validateMetaAdvancedForm(form, { metaEnabled = true } = {}) {
       return {
         valid: false,
         error: "Cost cap must be greater than 0.",
+      };
+    }
+  }
+
+  const attributionMode = String(
+    form?.attributionMode ?? "AUTO"
+  ).toUpperCase();
+
+  if (attributionMode !== "AUTO" && attributionMode !== "STANDARD") {
+    return {
+      valid: false,
+      error: "Choose a valid Meta attribution mode.",
+    };
+  }
+
+  if (attributionMode === "STANDARD") {
+    const clickWindowDays = Number(form?.clickAttributionDays ?? 7);
+    const viewWindowDays = Number(form?.viewAttributionDays ?? 1);
+    const engagedViewWindowDays = Number(
+      form?.engagedViewAttributionDays ?? 1
+    );
+
+    if (![1, 7].includes(clickWindowDays)) {
+      return {
+        valid: false,
+        error: "Click attribution must be 1 or 7 days.",
+      };
+    }
+
+    if (![0, 1].includes(viewWindowDays)) {
+      return {
+        valid: false,
+        error: "View attribution must be off or 1 day.",
+      };
+    }
+
+    if (![0, 1].includes(engagedViewWindowDays)) {
+      return {
+        valid: false,
+        error: "Engaged-view attribution must be off or 1 day.",
       };
     }
   }
