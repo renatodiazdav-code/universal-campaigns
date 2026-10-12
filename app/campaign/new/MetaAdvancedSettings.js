@@ -1,10 +1,24 @@
 "use client";
 
+import { useEffect, useMemo, useState } from "react";
+
 const POSITIONS = [
   ["FEED", "Feed"],
   ["STORIES", "Stories"],
   ["REELS", "Reels"],
 ];
+
+const BROWSE_GROUPS = [
+  ["DEMOGRAPHICS", "Demographics"],
+  ["INTERESTS", "Interests"],
+  ["BEHAVIORS", "Behaviors"],
+];
+
+function humanizeType(type) {
+  return String(type ?? "")
+    .replaceAll("_", " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
 
 function PlacementCheckboxes({
   label,
@@ -48,6 +62,36 @@ function PlacementCheckboxes({
   );
 }
 
+function SelectedItems({ items, emptyText, onRemove, describe }) {
+  if (!items?.length) {
+    return <p className="reviewDescription">{emptyText}</p>;
+  }
+
+  return (
+    <div style={{ display: "grid", gap: 8, marginTop: 10 }}>
+      {items.map((item) => (
+        <div
+          key={`${item.type || item.kind || "audience"}-${item.id}`}
+          className="reviewRow"
+        >
+          <span>
+            <strong>{item.name}</strong>
+            <br />
+            <small>{describe(item)}</small>
+          </span>
+          <button
+            type="button"
+            className="stepBackButton"
+            onClick={() => onRemove(item)}
+          >
+            Remove
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function MetaAdvancedSettings({
   hasBothPlatforms,
   allocationMode,
@@ -55,7 +99,6 @@ export default function MetaAdvancedSettings({
   budget,
   currency,
   setBudget,
-  autoAllocation,
   metaEnabled,
   facebookEnabled,
   instagramEnabled,
@@ -63,6 +106,210 @@ export default function MetaAdvancedSettings({
   setMetaAdvanced,
   validation,
 }) {
+  const [existingAudiences, setExistingAudiences] = useState([]);
+  const [audiencesLoading, setAudiencesLoading] = useState(false);
+  const [audiencesError, setAudiencesError] = useState("");
+  const [includedSearch, setIncludedSearch] = useState("");
+  const [excludedSearch, setExcludedSearch] = useState("");
+
+  const [targetingQuery, setTargetingQuery] = useState("");
+  const [targetingResults, setTargetingResults] = useState([]);
+  const [targetingLoading, setTargetingLoading] = useState(false);
+  const [targetingError, setTargetingError] = useState("");
+
+  useEffect(() => {
+    if (!metaEnabled) {
+      return;
+    }
+
+    const controller = new AbortController();
+
+    async function loadExistingAudiences() {
+      setAudiencesLoading(true);
+      setAudiencesError("");
+
+      try {
+        const response = await fetch("/api/meta/audiences", {
+          signal: controller.signal,
+        });
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || "Could not load Meta audiences");
+        }
+
+        setExistingAudiences(data.audiences ?? []);
+      } catch (error) {
+        if (error.name !== "AbortError") {
+          setAudiencesError(error.message);
+          setExistingAudiences([]);
+        }
+      } finally {
+        if (!controller.signal.aborted) {
+          setAudiencesLoading(false);
+        }
+      }
+    }
+
+    loadExistingAudiences();
+
+    return () => controller.abort();
+  }, [metaEnabled]);
+
+  useEffect(() => {
+    const query = targetingQuery.trim();
+
+    if (!metaEnabled || query.length < 2) {
+      setTargetingResults([]);
+      setTargetingError("");
+      return;
+    }
+
+    const controller = new AbortController();
+    const timer = setTimeout(async () => {
+      setTargetingLoading(true);
+      setTargetingError("");
+
+      try {
+        const response = await fetch(
+          `/api/meta/targeting-options?q=${encodeURIComponent(query)}`,
+          { signal: controller.signal }
+        );
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(
+            data.error || "Could not search Meta targeting options"
+          );
+        }
+
+        setTargetingResults(data.options ?? []);
+      } catch (error) {
+        if (error.name !== "AbortError") {
+          setTargetingError(error.message);
+          setTargetingResults([]);
+        }
+      } finally {
+        if (!controller.signal.aborted) {
+          setTargetingLoading(false);
+        }
+      }
+    }, 350);
+
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [metaEnabled, targetingQuery]);
+
+  const includedResults = useMemo(() => {
+    const query = includedSearch.trim().toLowerCase();
+    if (!query) return [];
+
+    return existingAudiences
+      .filter((audience) =>
+        audience.name.toLowerCase().includes(query)
+      )
+      .slice(0, 12);
+  }, [existingAudiences, includedSearch]);
+
+  const excludedResults = useMemo(() => {
+    const query = excludedSearch.trim().toLowerCase();
+    if (!query) return [];
+
+    return existingAudiences
+      .filter((audience) =>
+        audience.name.toLowerCase().includes(query)
+      )
+      .slice(0, 12);
+  }, [existingAudiences, excludedSearch]);
+
+  function selectExistingAudience(field, audience) {
+    const otherField =
+      field === "includedAudiences"
+        ? "excludedAudiences"
+        : "includedAudiences";
+
+    setMetaAdvanced((current) => {
+      const selected = current[field] ?? [];
+      const alreadySelected = selected.some(
+        (item) => item.id === audience.id
+      );
+
+      return {
+        ...current,
+        [field]: alreadySelected
+          ? selected
+          : [...selected, audience],
+        [otherField]: (current[otherField] ?? []).filter(
+          (item) => item.id !== audience.id
+        ),
+      };
+    });
+  }
+
+  function removeExistingAudience(field, audience) {
+    setMetaAdvanced((current) => ({
+      ...current,
+      [field]: (current[field] ?? []).filter(
+        (item) => item.id !== audience.id
+      ),
+    }));
+  }
+
+  function selectDetailedTargeting(option) {
+    setMetaAdvanced((current) => {
+      const selected = current.detailedTargeting ?? [];
+      const exists = selected.some(
+        (item) =>
+          item.id === option.id && item.type === option.type
+      );
+
+      return {
+        ...current,
+        detailedTargeting: exists
+          ? selected
+          : [...selected, option],
+      };
+    });
+  }
+
+  function removeDetailedTargeting(option) {
+    setMetaAdvanced((current) => ({
+      ...current,
+      detailedTargeting: (current.detailedTargeting ?? []).filter(
+        (item) =>
+          !(item.id === option.id && item.type === option.type)
+      ),
+    }));
+  }
+
+  async function browseTargeting(group) {
+    setTargetingQuery("");
+    setTargetingLoading(true);
+    setTargetingError("");
+
+    try {
+      const response = await fetch(
+        `/api/meta/targeting-options?browse=${encodeURIComponent(group)}`
+      );
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.error || "Could not browse Meta targeting options"
+        );
+      }
+
+      setTargetingResults(data.options ?? []);
+    } catch (error) {
+      setTargetingError(error.message);
+      setTargetingResults([]);
+    } finally {
+      setTargetingLoading(false);
+    }
+  }
+
   return (
     <div className="advancedPanel">
       <div className="advancedPanelHeader">
@@ -148,7 +395,7 @@ export default function MetaAdvancedSettings({
             <h2>Meta audience</h2>
 
             <label className="field">
-              <span>Audience strategy</span>
+              <span>Audience delivery</span>
               <select
                 value={metaAdvanced.audienceStrategy}
                 onChange={(event) =>
@@ -158,16 +405,197 @@ export default function MetaAdvancedSettings({
                   }))
                 }
               >
-                <option value="ADVANTAGE_PLUS">Advantage+ (Recommended)</option>
-                <option value="MANUAL">Manual targeting</option>
+                <option value="ADVANTAGE_PLUS">
+                  Advantage+ audience (Recommended)
+                </option>
+                <option value="MANUAL">
+                  I need a specific audience
+                </option>
               </select>
             </label>
 
-            <p className="reviewDescription">
-              {metaAdvanced.audienceStrategy === "ADVANTAGE_PLUS"
-                ? "Meta can use Advantage+ audience while Relay keeps your country, age and gender limits."
-                : "Advantage+ audience is disabled. Meta uses the country, age and gender you set above without audience expansion."}
-            </p>
+            {metaAdvanced.audienceStrategy === "ADVANTAGE_PLUS" ? (
+              <p className="reviewDescription">
+                Meta can go beyond audience suggestions to find more purchasers.
+                Your location, minimum age and excluded audiences remain controls.
+                Maximum age, gender, included audiences, lookalikes and detailed
+                targeting are suggestions for this Sales/Purchase campaign.
+              </p>
+            ) : (
+              <p className="reviewDescription">
+                Relay switches off Advantage+ audience delivery. Your age range,
+                gender and included Custom Audiences can be used as restrictions.
+                For Sales/Purchase, Meta still expands Lookalike Audiences and
+                detailed targeting, so those remain suggestions rather than hard
+                limits.
+              </p>
+            )}
+
+            <div className="field" style={{ marginTop: 18 }}>
+              <span>Existing audiences to include (optional)</span>
+              <input
+                type="search"
+                value={includedSearch}
+                onChange={(event) => setIncludedSearch(event.target.value)}
+                placeholder="Search existing Custom or Lookalike Audiences..."
+              />
+
+              {audiencesLoading && (
+                <p className="reviewDescription">Loading audiences from Meta...</p>
+              )}
+              {audiencesError && (
+                <p className="errorText">{audiencesError}</p>
+              )}
+
+              {includedSearch.trim() && !audiencesLoading && !audiencesError && (
+                <div style={{ display: "grid", gap: 8, marginTop: 10 }}>
+                  {includedResults.length === 0 ? (
+                    <p className="reviewDescription">
+                      No existing Meta audience matches that search.
+                    </p>
+                  ) : (
+                    includedResults.map((audience) => (
+                      <button
+                        key={`include-${audience.id}`}
+                        type="button"
+                        className="stepBackButton"
+                        onClick={() => {
+                          selectExistingAudience("includedAudiences", audience);
+                          setIncludedSearch("");
+                        }}
+                        style={{ textAlign: "left" }}
+                      >
+                        {audience.name} · {audience.kind === "LOOKALIKE" ? "Lookalike" : "Custom Audience"}
+                      </button>
+                    ))
+                  )}
+                </div>
+              )}
+
+              <SelectedItems
+                items={metaAdvanced.includedAudiences ?? []}
+                emptyText="No existing audiences selected."
+                onRemove={(audience) =>
+                  removeExistingAudience("includedAudiences", audience)
+                }
+                describe={(audience) =>
+                  audience.kind === "LOOKALIKE"
+                    ? "Lookalike Audience"
+                    : "Custom Audience"
+                }
+              />
+            </div>
+
+            <div className="field" style={{ marginTop: 18 }}>
+              <span>Excluded audiences (optional)</span>
+              <input
+                type="search"
+                value={excludedSearch}
+                onChange={(event) => setExcludedSearch(event.target.value)}
+                placeholder="Search existing audiences to exclude..."
+              />
+
+              {excludedSearch.trim() && !audiencesLoading && !audiencesError && (
+                <div style={{ display: "grid", gap: 8, marginTop: 10 }}>
+                  {excludedResults.length === 0 ? (
+                    <p className="reviewDescription">
+                      No existing Meta audience matches that search.
+                    </p>
+                  ) : (
+                    excludedResults.map((audience) => (
+                      <button
+                        key={`exclude-${audience.id}`}
+                        type="button"
+                        className="stepBackButton"
+                        onClick={() => {
+                          selectExistingAudience("excludedAudiences", audience);
+                          setExcludedSearch("");
+                        }}
+                        style={{ textAlign: "left" }}
+                      >
+                        {audience.name} · {audience.kind === "LOOKALIKE" ? "Lookalike" : "Custom Audience"}
+                      </button>
+                    ))
+                  )}
+                </div>
+              )}
+
+              <SelectedItems
+                items={metaAdvanced.excludedAudiences ?? []}
+                emptyText="No audiences excluded."
+                onRemove={(audience) =>
+                  removeExistingAudience("excludedAudiences", audience)
+                }
+                describe={() => "Audience control"}
+              />
+            </div>
+
+            <div className="field" style={{ marginTop: 18 }}>
+              <span>Detailed targeting (optional)</span>
+              <input
+                type="search"
+                value={targetingQuery}
+                onChange={(event) => setTargetingQuery(event.target.value)}
+                placeholder="Search demographics, interests or behaviors..."
+              />
+
+              <div
+                style={{
+                  display: "flex",
+                  gap: 8,
+                  flexWrap: "wrap",
+                  marginTop: 10,
+                }}
+              >
+                <span className="reviewDescription" style={{ margin: 0 }}>
+                  Browse:
+                </span>
+                {BROWSE_GROUPS.map(([value, label]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    className="stepBackButton"
+                    onClick={() => browseTargeting(value)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+
+              {targetingLoading && (
+                <p className="reviewDescription">
+                  Searching Meta targeting options...
+                </p>
+              )}
+              {targetingError && (
+                <p className="errorText">{targetingError}</p>
+              )}
+
+              {!targetingLoading && targetingResults.length > 0 && (
+                <div style={{ display: "grid", gap: 8, marginTop: 10 }}>
+                  {targetingResults.slice(0, 20).map((option) => (
+                    <button
+                      key={`${option.type}-${option.id}`}
+                      type="button"
+                      className="stepBackButton"
+                      onClick={() => selectDetailedTargeting(option)}
+                      style={{ textAlign: "left" }}
+                    >
+                      {option.name} · {humanizeType(option.type)}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              <SelectedItems
+                items={metaAdvanced.detailedTargeting ?? []}
+                emptyText="No detailed targeting selected."
+                onRemove={removeDetailedTargeting}
+                describe={(option) =>
+                  `${humanizeType(option.type)} · suggestion for Sales/Purchase`
+                }
+              />
+            </div>
           </div>
 
           <div className="reviewSection">
