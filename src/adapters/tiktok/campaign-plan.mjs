@@ -1,3 +1,5 @@
+import { resolvePlatformConfiguration } from "../../domain/platform-configuration.mjs";
+
 export function buildTikTokCampaignPlan(campaign) {
   if (!campaign.platforms?.tiktok?.enabled) {
     throw new Error("TikTok is not enabled for this campaign");
@@ -7,6 +9,7 @@ export function buildTikTokCampaignPlan(campaign) {
     throw new Error("TikTok MVP only supports SALES");
   }
 
+  const resolved = resolvePlatformConfiguration(campaign, "tiktok");
   return {
     platform: "TIKTOK",
 
@@ -16,11 +19,12 @@ export function buildTikTokCampaignPlan(campaign) {
     },
 
     audience: {
-      countries: campaign.audience.countries,
-      ageMin: campaign.audience.ageMin,
-      ageMax: campaign.audience.ageMax,
-      gender: campaign.audience.gender,
+      ...resolved.audience,
+      mode: resolved.settings.audience.mode,
     },
+
+    // Relay plan semantics; native TikTok payloads are validated by its connector.
+    bidding: resolved.settings.bidding,
 
     budget: {
       mode: campaign.budget.mode ?? "TOTAL",
@@ -31,11 +35,13 @@ export function buildTikTokCampaignPlan(campaign) {
 
     creative: {
       type: campaign.creative.type,
-      primaryText: campaign.creative.primaryText,
-      headline: campaign.creative.headline,
-      destinationUrl: campaign.creative.destinationUrl,
+      primaryText: resolved.creative.primaryText,
+      headline: resolved.creative.headline,
+      destinationUrl: resolved.creative.destinationUrl,
       imageUrl: campaign.product.imageUrl,
-      callToAction: campaign.creative.callToAction,
+      videoUrl: campaign.creative.videoUrl ?? null,
+      videoId: campaign.creative.platformAssets?.tiktok?.videoId ?? null,
+      callToAction: resolved.creative.callToAction,
     },
 
     overrides: campaign.overrides?.tiktok ?? {},

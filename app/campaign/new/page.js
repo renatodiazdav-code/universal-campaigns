@@ -3,11 +3,15 @@
 import { useEffect, useMemo, useState } from "react";
 import MetaAdvancedSettings from "./MetaAdvancedSettings";
 import {
-  buildMetaOverridesFromForm,
-  createDefaultMetaAdvancedForm,
   resolveEffectiveMetaPublishers,
   validateMetaAdvancedForm,
 } from "../../../src/application/meta-advanced-form.mjs";
+
+import { CampaignScopeTabs, ScopedAudienceFields, ScopedCreativeFields, SharedAdvancedSettings, PlatformConfigurationReview } from "./PlatformSettings";
+import { createMetaSettingsState, resolveMetaSettingsForm, updateMetaSettingsState, buildScopedMetaOverrides, universalSettingsFromForm, combinePlatformOverrides } from "../../../src/application/platform-settings-form.mjs";
+import { createUniversalCampaign } from "../../../src/domain/universal-campaign.mjs";
+import { resolvePlatformConfiguration } from "../../../src/domain/platform-configuration.mjs";
+import { buildPlatformPlans } from "../../../src/application/build-platform-plans.mjs";
 
 function roundMoney(value) {
   return Math.round((Number(value) + Number.EPSILON) * 100) / 100;
@@ -42,9 +46,37 @@ export default function NewCampaignPage() {
 
   const [allocationMode, setAllocationMode] = useState("AUTO");
   const [advancedOpen, setAdvancedOpen] = useState(false);
-  const [metaAdvanced, setMetaAdvanced] = useState(() =>
-    createDefaultMetaAdvancedForm()
-  );
+  const [scope, setScope] = useState("universal");
+  const [sharedSettings, setSharedSettings] = useState({ audienceMode: "AUTO", biddingStrategy: "LOWEST_COST", costCap: "" });
+  const [platformOverrides, setPlatformOverrides] = useState({ meta: {}, tiktok: {} });
+  const [tiktokSettings, setTikTokSettings] = useState({});
+  const [metaSettingsState, setMetaSettingsState] = useState(createMetaSettingsState);
+  const metaAdvanced = resolveMetaSettingsForm(metaSettingsState, sharedSettings);
+  function setMetaAdvanced(update) {
+    setMetaSettingsState((current) => updateMetaSettingsState(current, update, sharedSettings));
+  }
+  function changePlatformField(group, key, value) {
+    setPlatformOverrides((current) => {
+      const fields = { ...current[scope]?.[group] };
+      if (value === undefined) delete fields[key];
+      else fields[key] = value;
+      return { ...current, [scope]: { ...current[scope], [group]: fields } };
+    });
+  }
+  function buildOverrides() {
+    const tiktok = { ...platformOverrides.tiktok };
+    if (Object.hasOwn(tiktokSettings, "audienceMode")) tiktok.audienceMode = tiktokSettings.audienceMode;
+    if (Object.hasOwn(tiktokSettings, "biddingStrategy") || Object.hasOwn(tiktokSettings, "costCap")) {
+      tiktok.bidding = universalSettingsFromForm({ ...sharedSettings, ...tiktokSettings }).bidding;
+    }
+    return {
+      meta: combinePlatformOverrides(platformOverrides.meta, buildScopedMetaOverrides(metaSettingsState, sharedSettings)),
+      tiktok,
+    };
+  }
+  useEffect(() => {
+    if ((scope === "meta" && !platforms.meta) || (scope === "tiktok" && !platforms.tiktok)) setScope("universal");
+  }, [scope, platforms.meta, platforms.tiktok]);
 
   const [autoAllocation, setAutoAllocation] = useState(null);
   const [autoAllocationLoading, setAutoAllocationLoading] = useState(false);
@@ -58,6 +90,7 @@ export default function NewCampaignPage() {
     primaryText: "",
     headline: "",
     destinationUrl: "",
+    callToAction: "SHOP_NOW",
   });
   const [creativeType, setCreativeType] = useState("IMAGE");
   const [imagePreviewUrl, setImagePreviewUrl] = useState(null);
@@ -87,6 +120,11 @@ export default function NewCampaignPage() {
   const [launchingCampaign, setLaunchingCampaign] = useState(false);
   const [launchResult, setLaunchResult] = useState(null);
   const [launchError, setLaunchError] = useState("");
+
+  useEffect(() => {
+    setPlanResult(null);
+    setPlanError("");
+  }, [audience, creative, sharedSettings, platformOverrides, metaSettingsState, tiktokSettings, budget, platforms]);
 
   useEffect(() => {
     async function loadMetaSetup() {
@@ -182,7 +220,9 @@ export default function NewCampaignPage() {
       primaryText: `Discover ${selectedProduct.title}.`,
       headline: selectedProduct.title,
       destinationUrl: selectedProduct.destinationUrl || "",
+      callToAction: "SHOP_NOW",
     });
+    setPlatformOverrides({ meta: {}, tiktok: {} });
     setCreativeType("IMAGE");
     setImagePreviewUrl(null);
     setImageUpload({
@@ -277,10 +317,11 @@ export default function NewCampaignPage() {
         destinationUrl: selectedProduct.destinationUrl,
       },
 
+      settings: universalSettingsFromForm(sharedSettings),
       audience: {
         countries: [audience.country],
         ageMin: Number(audience.ageMin),
-        ageMax: Number(audience.ageMax),
+        ageMax: audience.ageMax == null ? null : Number(audience.ageMax),
         gender: audience.gender,
       },
 
@@ -302,6 +343,7 @@ export default function NewCampaignPage() {
         type: creativeType,
         primaryText: creative.primaryText,
         headline: creative.headline,
+        callToAction: creative.callToAction,
         destinationUrl: creative.destinationUrl,
         thumbnailUrl: selectedProduct.imageUrl,
         ...(creativeType === "VIDEO" && videoUpload.videoId
@@ -323,12 +365,7 @@ export default function NewCampaignPage() {
             : {}),
       },
 
-      overrides: {
-        meta: platforms.meta
-          ? buildMetaOverridesFromForm(metaAdvanced)
-          : {},
-        tiktok: {},
-      },
+      overrides: buildOverrides(),
     };
   }
 
@@ -506,8 +543,28 @@ export default function NewCampaignPage() {
         !budgetCompatibilityError &&
         budgetCompatibility?.eligible === true);
 
+  let configurationError = "";
+  try {
+    const draft = {
+      audience: { countries: [audience.country], ageMin: audience.ageMin, ageMax: audience.ageMax, gender: audience.gender },
+      creative,
+      settings: universalSettingsFromForm(sharedSettings),
+      overrides: buildOverrides(),
+    };
+    for (const key of ["meta", "tiktok"]) {
+      if (platforms[key]) resolvePlatformConfiguration(draft, key);
+    }
+  } catch (error) { configurationError = error.message; }
+
   const canAdvanceBudget =
-    budgetIsCompatible && metaAdvancedValidation.valid;
+    budgetIsCompatible && metaAdvancedValidation.valid && !configurationError;
+
+  let resolvedPlans = null;
+  if (creativeIsReady && canAdvanceBudget) {
+    try { resolvedPlans = buildPlatformPlans(createUniversalCampaign(buildCampaignInput())); }
+    catch (error) { configurationError = error.message; }
+  }
+  const previewCreative = scope === "universal" ? creative : { ...creative, ...platformOverrides[scope]?.creative };
 
   const manualTikTokMinimum =
     budgetCompatibility?.platforms?.tiktok?.minimumRequired;
@@ -920,77 +977,14 @@ export default function NewCampaignPage() {
               Tell Relay who you want to reach and how much you want to spend.
             </p>
 
+            <CampaignScopeTabs scope={scope} onChange={setScope} platforms={platforms} />
+            <p className="scopeDescription">{scope === "universal" ? "Shared settings apply to every selected platform." : `${scope === "meta" ? "Facebook and Instagram" : "TikTok"} uses Universal settings until you customize a field.`}</p>
             <div className="formSection">
               <h2>Audience</h2>
-              <label className="field">
-                <span>Country</span>
-                <select
-                  value={audience.country}
-                  onChange={(event) =>
-                    setAudience((current) => ({
-                      ...current,
-                      country: event.target.value,
-                    }))
-                  }
-                >
-                  <option value="PE">Peru</option>
-                  <option value="US">United States</option>
-                  <option value="MX">Mexico</option>
-                  <option value="CO">Colombia</option>
-                  <option value="CL">Chile</option>
-                </select>
-              </label>
-
-              <div className="fieldRow">
-                <label className="field">
-                  <span>Minimum age</span>
-                  <input
-                    type="number"
-                    min="18"
-                    max="65"
-                    value={audience.ageMin}
-                    onChange={(event) =>
-                      setAudience((current) => ({
-                        ...current,
-                        ageMin: Number(event.target.value),
-                      }))
-                    }
-                  />
-                </label>
-                <label className="field">
-                  <span>Maximum age</span>
-                  <input
-                    type="number"
-                    min="18"
-                    max="65"
-                    value={audience.ageMax}
-                    onChange={(event) =>
-                      setAudience((current) => ({
-                        ...current,
-                        ageMax: Number(event.target.value),
-                      }))
-                    }
-                  />
-                </label>
-              </div>
-
-              <label className="field">
-                <span>Gender</span>
-                <select
-                  value={audience.gender}
-                  onChange={(event) =>
-                    setAudience((current) => ({
-                      ...current,
-                      gender: event.target.value,
-                    }))
-                  }
-                >
-                  <option value="ALL">All</option>
-                  <option value="MALE">Men</option>
-                  <option value="FEMALE">Women</option>
-                </select>
-              </label>
+              <ScopedAudienceFields audience={audience} scope={scope} overrides={platformOverrides[scope]?.audience ?? {}}
+                setAudience={setAudience} setOverride={(key, value) => changePlatformField("audience", key, value)} />
             </div>
+            {configurationError && <p role="alert" className="errorText">{configurationError}</p>}
 
             <div className="formSection">
               <h2>Budget</h2>
@@ -1169,21 +1163,43 @@ export default function NewCampaignPage() {
                   )}
               </div>
 
-              {advancedOpen && (
-                <MetaAdvancedSettings
-                  hasBothPlatforms={hasBothPlatforms}
-                  allocationMode={allocationMode}
-                  changeAllocationMode={changeAllocationMode}
-                  budget={budget}
-                  currency={currency}
-                  setBudget={setBudget}
-                  metaEnabled={platforms.meta}
-                  facebookEnabled={platforms.facebook}
-                  instagramEnabled={platforms.instagram}
-                  metaAdvanced={metaAdvanced}
-                  setMetaAdvanced={setMetaAdvanced}
-                  validation={metaAdvancedValidation}
-                />
+              {advancedOpen && scope === "universal" && (
+                <>
+                  <SharedAdvancedSettings form={sharedSettings} currency={currency}
+                    onChange={(key, value) => setSharedSettings((current) => ({ ...current, [key]: value }))} />
+                  <MetaAdvancedSettings hasBothPlatforms={hasBothPlatforms} allocationMode={allocationMode}
+                    changeAllocationMode={changeAllocationMode} budget={budget} currency={currency} setBudget={setBudget}
+                    metaEnabled={false} facebookEnabled={false} instagramEnabled={false} metaAdvanced={metaAdvanced}
+                    setMetaAdvanced={setMetaAdvanced} validation={{ valid: true }} />
+                </>
+              )}
+              {advancedOpen && scope === "meta" && (
+                <>
+                  {Object.values(metaSettingsState.customized).some(Boolean) && <button type="button" className="inheritButton" onClick={() => setMetaSettingsState(createMetaSettingsState())}>Use Universal for Meta advanced settings</button>}
+                  <MetaAdvancedSettings hasBothPlatforms={false} allocationMode={allocationMode}
+                    changeAllocationMode={changeAllocationMode} budget={budget} currency={currency} setBudget={setBudget}
+                    showBudgetDistribution={false} metaEnabled={platforms.meta} facebookEnabled={platforms.facebook}
+                    instagramEnabled={platforms.instagram} metaAdvanced={metaAdvanced} setMetaAdvanced={setMetaAdvanced}
+                    validation={metaAdvancedValidation} />
+                </>
+              )}
+              {advancedOpen && scope === "tiktok" && (
+                <SharedAdvancedSettings form={{ ...sharedSettings, ...tiktokSettings }} currency={currency} customized={tiktokSettings}
+                  onChange={(key, value) => setTikTokSettings((current) => {
+                    const next = { ...current, [key]: value };
+                    // Bidding is one setting: freeze its strategy and target together.
+                    if (key === "biddingStrategy" || key === "costCap") {
+                      next.biddingStrategy = key === "biddingStrategy" ? value : current.biddingStrategy ?? sharedSettings.biddingStrategy;
+                      next.costCap = key === "costCap" ? value : current.costCap ?? sharedSettings.costCap;
+                    }
+                    return next;
+                  })}
+                  onReset={(key) => setTikTokSettings((current) => {
+                    const next = { ...current };
+                    if (key === "bidding") { delete next.biddingStrategy; delete next.costCap; }
+                    else delete next[key];
+                    return next;
+                  })} />
               )}
             </div>
 
@@ -1226,6 +1242,8 @@ export default function NewCampaignPage() {
               Choose an image or video, then customize the message people will see.
             </p>
 
+            <CampaignScopeTabs scope={scope} onChange={setScope} platforms={platforms} />
+            <p className="scopeDescription">{scope === "universal" ? "Upload one creative and share its message across platforms." : "Customize the message for this platform. The uploaded image or video stays shared."}</p>
             <div className="formSection">
               <h2>Creative</h2>
               <div className="platformGrid">
@@ -1346,53 +1364,17 @@ export default function NewCampaignPage() {
                   <span className="creativeLabel">
                     {creativeType === "VIDEO" ? "VIDEO PREVIEW" : "AD PREVIEW"}
                   </span>
-                  <strong>{creative.headline || selectedProduct.title}</strong>
-                  <p>{creative.primaryText}</p>
+                  <strong>{previewCreative.headline || selectedProduct.title}</strong>
+                  <p>{previewCreative.primaryText}</p>
                 </div>
               </div>
             )}
 
             <div className="formSection">
-              <label className="field">
-                <span>Primary text</span>
-                <textarea
-                  rows="4"
-                  value={creative.primaryText}
-                  onChange={(event) =>
-                    setCreative((current) => ({
-                      ...current,
-                      primaryText: event.target.value,
-                    }))
-                  }
-                />
-              </label>
-              <label className="field">
-                <span>Headline</span>
-                <input
-                  type="text"
-                  value={creative.headline}
-                  onChange={(event) =>
-                    setCreative((current) => ({
-                      ...current,
-                      headline: event.target.value,
-                    }))
-                  }
-                />
-              </label>
-              <label className="field">
-                <span>Destination URL</span>
-                <input
-                  type="url"
-                  value={creative.destinationUrl}
-                  onChange={(event) =>
-                    setCreative((current) => ({
-                      ...current,
-                      destinationUrl: event.target.value,
-                    }))
-                  }
-                />
-              </label>
+              <ScopedCreativeFields creative={creative} scope={scope} overrides={platformOverrides[scope]?.creative ?? {}}
+                setCreative={setCreative} setOverride={(key, value) => changePlatformField("creative", key, value)} />
             </div>
+            {configurationError && <p role="alert" className="errorText">{configurationError}</p>}
 
             <div className="campaignActions">
               <button
@@ -1406,7 +1388,7 @@ export default function NewCampaignPage() {
                 type="button"
                 className="continueButton"
                 disabled={
-                  !creativeIsReady ||
+                  !creativeIsReady || !!configurationError ||
                   imageUpload.status === "UPLOADING" ||
                   videoUpload.status === "UPLOADING"
                 }
@@ -1478,47 +1460,8 @@ export default function NewCampaignPage() {
               </div>
             </div>
 
-            {platforms.meta && (
-              <div className="reviewSection">
-                <h2>Meta configuration</h2>
-                <div className="reviewRow">
-                  <span>Audience</span>
-                  <strong>
-                    {metaAdvanced.audienceStrategy === "ADVANTAGE_PLUS"
-                      ? "Advantage+"
-                      : "Manual"}
-                  </strong>
-                </div>
-                <div className="reviewRow">
-                  <span>Bidding</span>
-                  <strong>
-                    {metaAdvanced.biddingStrategy === "COST_CAP"
-                      ? `Cost cap · ${currency} ${Number(metaAdvanced.costCap).toFixed(2)}`
-                      : "Lowest cost"}
-                  </strong>
-                </div>
-                <div className="reviewRow">
-                  <span>Placements</span>
-                  <strong>
-                    {metaAdvanced.placementsMode === "RECOMMENDED"
-                      ? "Relay recommended"
-                      : "Manual"}
-                  </strong>
-                </div>
-                {metaAdvanced.placementsMode === "MANUAL" && (
-                  <>
-                    <div className="reviewRow">
-                      <span>Facebook</span>
-                      <strong>{metaAdvanced.facebookPositions.join(", ") || "Off"}</strong>
-                    </div>
-                    <div className="reviewRow">
-                      <span>Instagram</span>
-                      <strong>{metaAdvanced.instagramPositions.join(", ") || "Off"}</strong>
-                    </div>
-                  </>
-                )}
-              </div>
-            )}
+            {configurationError && <p role="alert" className="errorText">{configurationError}</p>}
+            <PlatformConfigurationReview plans={resolvedPlans} currency={currency} />
 
             {allocationMode === "MANUAL" && hasBothPlatforms && (
               <div className="reviewSection">
@@ -1538,9 +1481,8 @@ export default function NewCampaignPage() {
               <div className="reviewSection">
                 <h2>TikTok execution</h2>
                 <p className="reviewDescription">
-                  Budget compatibility is ready, but Relay has not connected
-                  the TikTok execution API yet. We will not create or spend on
-                  TikTok until that connector is implemented.
+                  TikTok publishing is not available yet. You can prepare and
+                  review its configuration here, but it cannot launch yet.
                 </p>
               </div>
             )}
@@ -1592,7 +1534,7 @@ export default function NewCampaignPage() {
                     generatingPlan ||
                     !budgetIsCompatible ||
                     !creativeIsReady ||
-                    !metaAdvancedValidation.valid
+                    !metaAdvancedValidation.valid || !!configurationError
                   }
                 >
                   {generatingPlan ? "Checking..." : "View developer plan"}
@@ -1606,7 +1548,7 @@ export default function NewCampaignPage() {
                     !!launchResult ||
                     !budgetIsCompatible ||
                     !creativeIsReady ||
-                    !metaAdvancedValidation.valid ||
+                    !metaAdvancedValidation.valid || !!configurationError ||
                     !platforms.meta ||
                     platforms.tiktok
                   }

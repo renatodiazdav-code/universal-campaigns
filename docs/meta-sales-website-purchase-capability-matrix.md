@@ -2,7 +2,9 @@
 
 Status: product + engineering research baseline
 
-Last reviewed: 2026-10-11
+Last reviewed: 2026-10-12
+
+Confirmed product decisions and current implementation status: `docs/relay-product-and-progress.md`. The tables below remain a research backlog, not a guarantee that every listed control is available in Relay.
 
 Scope: **Meta Ads for ecommerce stores using Sales -> Website -> Purchase.**
 
@@ -15,7 +17,7 @@ Relay should be **simple by default and deep on demand**.
 - `BASIC`: a normal merchant may need to choose it.
 - `AUTO`: Relay should choose/configure it automatically.
 - `ADVANCED`: useful professional control; hidden behind Advanced Settings.
-- `EXPERT`: real control for experienced media buyers; hidden deeper than normal Advanced.
+- Advanced remains a single level. More technical controls belong in their relevant Advanced section when supported; there is no Expert tier.
 - `CONDITIONAL`: show only when the connected account/assets/region make it relevant.
 - `LATER`: valid Meta capability, but too large, risky, or dependent for this MVP.
 - `OUT`: intentionally outside the Sales / Website / Purchase MVP.
@@ -45,8 +47,8 @@ Meta changes Ads Manager frequently and rolls features out by account, country, 
 | Start date/time | Delivery start | BASIC/AUTO | P0 | Ad-set schedule + campaign schedule | BUILT |
 | End date/time / duration | Delivery end | BASIC | P0 | Relay derives from duration | BUILT |
 | Campaign bid strategy | Campaign-level bidding behavior | ADVANCED | P0/P1 | Current API names include lowest cost, cost cap, bid cap patterns | PARTIAL |
-| Campaign spending limit | Hard campaign-level ceiling separate from regular budget semantics | EXPERT | P2 | Available only in eligible configurations | NOT BUILT |
-| Budget scheduling / high-demand periods | Temporarily raises/changes budget in scheduled periods | EXPERT | P2 | API exposes budget schedules/high-demand periods | NOT BUILT |
+| Campaign spending limit | Hard campaign-level ceiling separate from regular budget semantics | ADVANCED | P2 | Available only in eligible configurations | NOT BUILT |
+| Budget scheduling / high-demand periods | Temporarily raises/changes budget in scheduled periods | ADVANCED | P2 | API exposes budget schedules/high-demand periods | NOT BUILT |
 | A/B test / experiment | Controlled comparison of campaigns/variables | LATER | Post-MVP | Requires experiment lifecycle and analysis UX | NOT BUILT |
 | Reserved buying | Reservation instead of auction | OUT | — | Not part of normal Shopify Sales MVP | NOT BUILT |
 | Advantage+ sales campaign-specific automation | Meta-owned automation bundle around sales campaigns | AUTO / RESEARCH | P2 | Product/API behavior continues to evolve | NOT BUILT as a distinct mode |
@@ -56,7 +58,7 @@ Meta changes Ads Manager frequently and rolls features out by account, country, 
 | Setting | What it changes | Relay UX | MVP priority | API / account notes | Relay status |
 |---|---|---:|---:|---|---|
 | Conversion location: Website | Where the desired conversion happens | AUTO | P0 | Relay is Shopify website-first | BUILT semantically / PARTIAL as explicit destination field |
-| Pixel / Dataset | Data source used for conversion optimization | AUTO when unambiguous; ADVANCED if multiple | P0/P1 | Discoverable from ad account | PARTIAL — auto discovery/selection exists; expert selector does not |
+| Pixel / Dataset | Data source used for conversion optimization | AUTO when unambiguous; ADVANCED if multiple | P0/P1 | Discoverable from ad account | PARTIAL — auto discovery/selection exists; advanced selector does not |
 | Conversion event: Purchase | Event Meta should optimize toward | AUTO | P0 | `promoted_object` with Purchase | BUILT |
 | Maximize number of conversions | Finds more purchase conversions | AUTO | P0 | Current Relay uses offsite conversions/Purchase | BUILT |
 | Maximize conversion value | Optimizes total purchase value rather than count | ADVANCED | P2 | Requires trustworthy purchase value tracking and compatible bidding | NOT BUILT |
@@ -70,7 +72,7 @@ Meta changes Ads Manager frequently and rolls features out by account, country, 
 | Setting | What it changes | Relay UX | MVP priority | API / account notes | Relay status |
 |---|---|---:|---:|---|---|
 | Attribution model: Standard | Normal optimization/reporting using chosen attribution windows | AUTO by default; ADVANCED selector | P1 | Current Ads Manager default for common Website conversion setups | PARTIAL — currently relies on Meta default |
-| Attribution model: Incremental | Optimizes for conversions Meta predicts were caused by the ad | CONDITIONAL / EXPERT | P2 | Available for eligible conversion campaigns; can constrain other bid controls | RESEARCH / NOT BUILT |
+| Attribution model: Incremental | Optimizes for conversions Meta predicts were caused by the ad | CONDITIONAL / ADVANCED | P2 | Available for eligible conversion campaigns; can constrain other bid controls | RESEARCH / NOT BUILT |
 | Personalized attribution | Uses eligible partner/analytics attribution signals | CONDITIONAL | Post-MVP unless partner available | Requires supported analytics integration/account eligibility | NOT BUILT |
 | Click-through attribution window | How long after a link click Meta can credit conversion | ADVANCED | P1 | `attribution_spec` supported by Marketing API | NOT BUILT |
 | Engage-through attribution window | Credits conversion after qualifying social interaction | ADVANCED | P1 | Meta changed naming/measurement in 2026 | NOT BUILT |
@@ -83,10 +85,10 @@ Meta changes Ads Manager frequently and rolls features out by account, country, 
 |---|---|---:|---:|---|---|
 | Highest volume / Lowest cost | Spend budget to get the most results without a bid cap | AUTO default; ADVANCED | P0 | API value currently used by Relay: `LOWEST_COST_WITHOUT_CAP` | BUILT |
 | Cost per result goal / Cost Cap | Tries to keep average result cost around a target | ADVANCED | P0/P1 | API uses Cost Cap semantics | BUILT but still needs live Meta validation for exact CBO combination |
-| Bid Cap | Caps auction bid directly | EXPERT | P1 | API supports `LOWEST_COST_WITH_BID_CAP` + bid amount | NOT BUILT |
-| Highest value | Optimizes purchase value | EXPERT | P2 | Requires value optimization and reliable revenue signals | NOT BUILT |
-| Minimum ROAS / ROAS goal | Guides bidding toward a return target | EXPERT | P2 | Requires value signal + compatible bid constraints | NOT BUILT |
-| Bid adjustments / value rules | Gives selected conversions/audiences relatively more or less value | EXPERT / CONDITIONAL | P3 | Eligibility and modern Value Rules behavior vary by account | NOT BUILT |
+| Bid Cap | Caps auction bid directly | ADVANCED | P1 | API supports `LOWEST_COST_WITH_BID_CAP` + bid amount | NOT BUILT |
+| Highest value | Optimizes purchase value | ADVANCED | P2 | Requires value optimization and reliable revenue signals | NOT BUILT |
+| Minimum ROAS / ROAS goal | Guides bidding toward a return target | ADVANCED | P2 | Requires value signal + compatible bid constraints | NOT BUILT |
+| Bid adjustments / value rules | Gives selected conversions/audiences relatively more or less value | ADVANCED / CONDITIONAL | P3 | Eligibility and modern Value Rules behavior vary by account | NOT BUILT |
 
 ## 5. Audience
 
@@ -95,7 +97,7 @@ Meta changes Ads Manager frequently and rolls features out by account, country, 
 | Country | Geographic delivery | BASIC | P0 | `geo_locations.countries` | BUILT |
 | Region/state | Geographic delivery | ADVANCED | P1 | Targeting geo API | NOT BUILT |
 | City | Geographic delivery | ADVANCED | P1 | Targeting geo API | NOT BUILT |
-| ZIP/postcode / radius where supported | Geographic delivery | EXPERT | P2 | Country-dependent | NOT BUILT |
+| ZIP/postcode / radius where supported | Geographic delivery | ADVANCED | P2 | Country-dependent | NOT BUILT |
 | Minimum age | Audience control | BASIC | P0 | Advantage+ treats minimum age as a control | BUILT |
 | Maximum age | Audience range/suggestion depending on mode | BASIC | P0 | Semantics vary with Advantage+ | BUILT |
 | Gender | Audience suggestion/control depending on mode | BASIC | P0 | Semantics vary with Advantage+ | BUILT |
@@ -126,14 +128,14 @@ Relay’s **current product decision** remains: recommended = Facebook + Instagr
 | Instagram Feed | Delivery surface | ADVANCED | P0 | Manual placement | BUILT |
 | Instagram Stories | Delivery surface | ADVANCED | P0 | Manual placement | BUILT |
 | Instagram Reels | Delivery surface | ADVANCED | P0 | Manual placement | BUILT |
-| Meta Advantage+ placements | Lets Meta choose broadly across eligible placements | EXPERT / RESEARCH | P2 | Different from Relay Recommended; not current product default | NOT BUILT as a selectable mode |
-| Facebook Marketplace/Search/Right Column/video surfaces | Extra Facebook surfaces | EXPERT / CONDITIONAL | P2 | Eligibility varies by objective/creative | NOT BUILT |
-| Instagram Explore/Search | Extra Instagram surfaces | EXPERT / CONDITIONAL | P2 | Eligibility varies | NOT BUILT |
-| Threads | Threads placement | EXPERT / CONDITIONAL | P2 | Expanded in 2026; account/format availability varies | NOT BUILT |
-| Messenger | Messenger placements | EXPERT / CONDITIONAL | P2 | Explicitly excluded from current MVP placement set | NOT BUILT |
-| Audience Network | Third-party app/site inventory | EXPERT / CONDITIONAL | P2 | Explicitly excluded from current MVP placement set | NOT BUILT |
-| Device platform | Mobile/desktop targeting | EXPERT | P2 | Targeting supports device platform | NOT BUILT |
-| OS/device model | User OS/device targeting | EXPERT | P3 | Very niche for Shopify web sales | NOT BUILT |
+| Meta Advantage+ placements | Lets Meta choose broadly across eligible placements | ADVANCED / RESEARCH | P2 | Different from Relay Recommended; not current product default | NOT BUILT as a selectable mode |
+| Facebook Marketplace/Search/Right Column/video surfaces | Extra Facebook surfaces | ADVANCED / CONDITIONAL | P2 | Eligibility varies by objective/creative | NOT BUILT |
+| Instagram Explore/Search | Extra Instagram surfaces | ADVANCED / CONDITIONAL | P2 | Eligibility varies | NOT BUILT |
+| Threads | Threads placement | ADVANCED / CONDITIONAL | P2 | Expanded in 2026; account/format availability varies | NOT BUILT |
+| Messenger | Messenger placements | ADVANCED / CONDITIONAL | P2 | Explicitly excluded from current MVP placement set | NOT BUILT |
+| Audience Network | Third-party app/site inventory | ADVANCED / CONDITIONAL | P2 | Explicitly excluded from current MVP placement set | NOT BUILT |
+| Device platform | Mobile/desktop targeting | ADVANCED | P2 | Targeting supports device platform | NOT BUILT |
+| OS/device model | User OS/device targeting | ADVANCED | P3 | Very niche for Shopify web sales | NOT BUILT |
 | Placement-specific creative assets | Different image/video per placement | ADVANCED | P1/P2 | Valuable for professionals; larger creative UX | NOT BUILT |
 
 ## 7. Schedule and pacing
@@ -141,24 +143,24 @@ Relay’s **current product decision** remains: recommended = Facebook + Instagr
 | Setting | What it changes | Relay UX | MVP priority | API / account notes | Relay status |
 |---|---|---:|---:|---|---|
 | Start/end schedule | Campaign delivery dates | BASIC | P0 | Standard ad-set schedule | BUILT |
-| Ad scheduling/dayparting | Limits delivery to chosen hours/days | EXPERT | P2 | API has ad-set scheduling/time controls | NOT BUILT |
+| Ad scheduling/dayparting | Limits delivery to chosen hours/days | ADVANCED | P2 | API has ad-set scheduling/time controls | NOT BUILT |
 | Pacing | How spend is paced | AUTO | P3 | API exposes pacing-related fields; not usually merchant-facing | NOT BUILT |
-| High-demand budget periods | Temporarily changes spend during promotions | EXPERT | P2 | Requires budget schedule lifecycle | NOT BUILT |
+| High-demand budget periods | Temporarily changes spend during promotions | ADVANCED | P2 | Requires budget schedule lifecycle | NOT BUILT |
 
 ## 8. Brand safety / suitability
 
 | Setting | What it changes | Relay UX | MVP priority | API / account notes | Relay status |
 |---|---|---:|---:|---|---|
-| Inventory/content filter | Controls sensitivity of adjacent content | EXPERT / CONDITIONAL | P2 | Relevant especially when broader placements are enabled | NOT BUILT |
-| Publisher block lists | Blocks specific publishers/apps | EXPERT | P3 | Requires list management | NOT BUILT |
-| Publisher/content category exclusions | Excludes classes of adjacent content | EXPERT | P3 | Availability changes with inventory/products | NOT BUILT |
+| Inventory/content filter | Controls sensitivity of adjacent content | ADVANCED / CONDITIONAL | P2 | Relevant especially when broader placements are enabled | NOT BUILT |
+| Publisher block lists | Blocks specific publishers/apps | ADVANCED | P3 | Requires list management | NOT BUILT |
+| Publisher/content category exclusions | Excludes classes of adjacent content | ADVANCED | P3 | Availability changes with inventory/products | NOT BUILT |
 | In-stream suitability controls | Video/in-stream safety behavior | CONDITIONAL | P3 | Only relevant if those placements are supported | NOT BUILT |
 
 ## 9. Ad identity
 
 | Setting | What it changes | Relay UX | MVP priority | API / account notes | Relay status |
 |---|---|---:|---:|---|---|
-| Facebook Page | Facebook identity attached to creative | AUTO if one obvious; ADVANCED if multiple | P0/P1 | Relay discovers Pages | PARTIAL — automatic setup exists; expert chooser is not yet a normal campaign control |
+| Facebook Page | Facebook identity attached to creative | AUTO if one obvious; ADVANCED if multiple | P0/P1 | Relay discovers Pages | PARTIAL — automatic setup exists; advanced selector is not yet a normal campaign control |
 | Instagram identity | Instagram identity attached to creative | AUTO if connected; ADVANCED if multiple | P0/P1 | Relay discovers compatible IG identity | PARTIAL |
 | Partnership / branded content ad | Creator/business partnership identity | CONDITIONAL / LATER | P3 | Requires creator permissions and extra objects | NOT BUILT |
 | Existing post identity | Promote an existing Page/IG post instead of a new creative | ADVANCED | P2 | Existing-post flow differs from manual creative | NOT BUILT |
@@ -195,14 +197,14 @@ Relay currently only opts into **creative fitting/adaptation** needed to reuse t
 | Visual touch-ups | Additional visual optimization | ADVANCED | P2 | Enhancement availability varies | PARTIAL only through current fitting subset |
 | Brightness/contrast | Adjusts visual levels | ADVANCED | P2 | Low-risk enhancement | NOT BUILT explicitly |
 | Relevant comments | Can surface selected social proof comments | ADVANCED | P2 | Depends on ad/post behavior | NOT BUILT |
-| Text improvements / text generation | Rewrites or generates copy variations | EXPERT with preview | P2 | Generative; brand-risky | NOT BUILT |
+| Text improvements / text generation | Rewrites or generates copy variations | ADVANCED with preview | P2 | Generative; brand-risky | NOT BUILT |
 | Image expansion | Generates/fills image edges for other ratios | ADVANCED with preview | P2 | Meta has API examples for image expansion | NOT BUILT explicitly |
-| Background generation | Generates new backgrounds | EXPERT with preview | P3 | Generative; brand-risky | NOT BUILT |
-| Image generation | Generates new imagery | EXPERT with preview | P3 | Generative; brand-risky | NOT BUILT |
-| Animation / image-to-video effects | Adds motion to static creative | EXPERT with preview | P3 | Enhancement availability varies | NOT BUILT |
-| Music | Adds soundtrack | EXPERT with preview | P3 | Can materially alter brand presentation | NOT BUILT |
+| Background generation | Generates new backgrounds | ADVANCED with preview | P3 | Generative; brand-risky | NOT BUILT |
+| Image generation | Generates new imagery | ADVANCED with preview | P3 | Generative; brand-risky | NOT BUILT |
+| Animation / image-to-video effects | Adds motion to static creative | ADVANCED with preview | P3 | Enhancement availability varies | NOT BUILT |
+| Music | Adds soundtrack | ADVANCED with preview | P3 | Can materially alter brand presentation | NOT BUILT |
 | CTA enhancement | Changes presentation/emphasis of CTA | ADVANCED | P2 | Enhancement-specific | NOT BUILT |
-| Translations | Generates/translates creative text/audio | CONDITIONAL / EXPERT | P3 | Language/account/format dependent | NOT BUILT |
+| Translations | Generates/translates creative text/audio | CONDITIONAL / ADVANCED | P3 | Language/account/format dependent | NOT BUILT |
 | Overlays/labels | Adds visual overlays/labels | ADVANCED | P2/P3 | Format/catalog dependent | NOT BUILT |
 
 ## 12. Creative setup extras and destination behavior
@@ -212,9 +214,9 @@ Relay currently only opts into **creative fitting/adaptation** needed to reuse t
 | Site links | Adds extra destination links under ad | ADVANCED | P1/P2 | Useful for stores with category/shipping/returns pages | NOT BUILT |
 | Promotions / promo codes | Surfaces promotion information | CONDITIONAL / ADVANCED | P2 | Useful when merchant has an active promotion | NOT BUILT |
 | Website highlights | Surfaces website/business details | ADVANCED | P2 | Availability varies | NOT BUILT |
-| Summaries | Adds/uses generated or extracted summaries | EXPERT | P3 | Availability varies | NOT BUILT |
+| Summaries | Adds/uses generated or extracted summaries | ADVANCED | P3 | Availability varies | NOT BUILT |
 | Product browsing | Lets people browse more products | CONDITIONAL | P2 | Catalog/website support required | NOT BUILT |
-| Personalized destinations | Meta can choose among destinations/add-ons | EXPERT / CONDITIONAL | P3 | Depends on account/assets | NOT BUILT |
+| Personalized destinations | Meta can choose among destinations/add-ons | ADVANCED / CONDITIONAL | P3 | Depends on account/assets | NOT BUILT |
 | Browser add-ons (WhatsApp/IG Direct/Form/etc.) | Adds extra post-click/contact path | CONDITIONAL | P3 | Only useful for merchants that want those flows | NOT BUILT |
 
 ## 13. Tracking and measurement configuration
@@ -289,7 +291,7 @@ Use progressive disclosure instead of one enormous form:
 
 Each section should show a compact summary until opened.
 
-## Expert mode principle
+## Conditional Advanced controls
 
 If a user wants maximum control, expose **only controls actually available for that connected account and current campaign configuration**.
 
@@ -313,7 +315,7 @@ These should be investigated/implemented next before adding more exotic systems:
 1. **Attribution windows** (`attribution_spec`) with Standard as automatic default.
 2. **Conditional Pixel/Dataset selector** when more than one valid source exists.
 3. **Languages + region/city geo targeting**.
-4. **Bid Cap** in Expert bidding, while keeping Highest Volume default and Cost Cap available.
+4. **Bid Cap** in Advanced bidding, while keeping Highest Volume default and Cost Cap available.
 5. **Description + multiple text/headline variants**.
 6. **URL parameters / UTMs**, including optional dynamic identifiers.
 7. **Conditional Page/Instagram identity selector** when multiple valid identities exist.

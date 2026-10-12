@@ -609,6 +609,22 @@ button {
   margin-top: 18px;
 }
 
+.scopeTabs { display: flex; gap: 6px; padding: 5px; border: 1px solid #e5e5e5; border-radius: 12px; background: #fafafa; }
+.scopeTabs button { flex: 1; padding: 12px 10px; background: transparent; color: #666; font-size: 14px; }
+.scopeTabs button.active { background: #111; color: #fff; }
+.scopeTabs button:disabled { opacity: .4; cursor: not-allowed; }
+.scopeTabs button:focus-visible, .inheritButton:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
+.scopeDescription { color: #666; line-height: 1.6; font-size: 14px; }
+.scopedFieldLabel { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+.scopedFieldLabel label { font-size: 14px; font-weight: 600; color: #333; }
+.inheritButton { padding: 5px 0; background: transparent; color: #2563eb; font-size: 12px; font-weight: 500; text-align: left; }
+.sharedAdvancedSection { padding: 16px 0; border-bottom: 1px solid #e5e5e5; }
+.sharedAdvancedSection:last-child { border-bottom: 0; }
+.sharedAdvancedSection summary { cursor: pointer; font-weight: 600; line-height: 1.6; }
+.sharedAdvancedSection summary span { display: block; color: #666; font-size: 13px; font-weight: 400; }
+.sharedAdvancedSection[open] summary { margin-bottom: 18px; }
+.resolvedPlatformReview .reviewRow strong { max-width: 65%; overflow-wrap: anywhere; white-space: pre-wrap; }
+
 @media (max-width: 700px) {
   .fieldRow,
   .creativePreview {

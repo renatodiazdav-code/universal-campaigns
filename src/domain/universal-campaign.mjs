@@ -1,3 +1,5 @@
+import { normalizeUniversalSettings, normalizeCampaignAudience, resolvePlatformConfiguration } from "./platform-configuration.mjs";
+
 const BUDGET_MODES = new Set(["TOTAL", "DAILY"]);
 const CREATIVE_TYPES = new Set(["IMAGE", "VIDEO"]);
 const CALL_TO_ACTIONS = new Set([
@@ -214,7 +216,7 @@ export function createUniversalCampaign(input) {
       ? budgetAmount * durationDays
       : budgetAmount;
 
-  return {
+  const campaign = {
     version: 2,
 
     name: input.name.trim(),
@@ -232,12 +234,8 @@ export function createUniversalCampaign(input) {
         input.product.destinationUrl ?? null,
     },
 
-    audience: {
-      countries: input.audience.countries,
-      ageMin: input.audience.ageMin ?? 18,
-      ageMax: input.audience.ageMax ?? null,
-      gender: input.audience.gender ?? "ALL",
-    },
+    audience: normalizeCampaignAudience(input.audience),
+    settings: normalizeUniversalSettings(input.settings),
 
     budget: {
       mode: budgetMode,
@@ -291,4 +289,9 @@ export function createUniversalCampaign(input) {
     status: "DRAFT",
     createdAt: new Date().toISOString(),
   };
+
+  for (const platform of ["meta", "tiktok"]) {
+    if (campaign.platforms[platform].enabled) resolvePlatformConfiguration(campaign, platform);
+  }
+  return campaign;
 }

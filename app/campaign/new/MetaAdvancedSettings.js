@@ -145,6 +145,7 @@ export default function MetaAdvancedSettings({
   metaAdvanced,
   setMetaAdvanced,
   validation,
+  showBudgetDistribution = true,
 }) {
   const [existingAudiences, setExistingAudiences] = useState([]);
   const [audiencesLoading, setAudiencesLoading] = useState(false);
@@ -385,7 +386,7 @@ export default function MetaAdvancedSettings({
         </div>
       </div>
 
-      <AdvancedSection title="Budget distribution" summary={budgetSummary}>
+      {showBudgetDistribution && <AdvancedSection title="Budget distribution" summary={budgetSummary}>
         {hasBothPlatforms ? (
           <>
             <label className="field">
@@ -451,7 +452,7 @@ export default function MetaAdvancedSettings({
             budget automatically.
           </p>
         )}
-      </AdvancedSection>
+      </AdvancedSection>}
 
       {metaEnabled && (
         <>

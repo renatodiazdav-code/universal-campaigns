@@ -1,4 +1,5 @@
 import { resolveMetaAdvancedSettings } from "./advanced-settings.mjs";
+import { resolvePlatformConfiguration } from "../../domain/platform-configuration.mjs";
 
 export function buildMetaAttributionSpec(attribution, creativeType) {
   if (!attribution || attribution.mode === "AUTO") {
@@ -54,8 +55,16 @@ export function buildMetaCampaignPlan(campaign) {
     );
   }
 
+  const resolved = resolvePlatformConfiguration(campaign, "meta");
   const advanced = resolveMetaAdvancedSettings(
-    campaign.overrides?.meta ?? {},
+    {
+      audienceStrategy: resolved.settings.audience.mode === "SPECIFIC" ? "MANUAL" : "ADVANTAGE_PLUS",
+      bidding: {
+        strategy: resolved.settings.bidding.strategy,
+        ...(resolved.settings.bidding.strategy === "COST_CAP" ? { costCap: resolved.settings.bidding.costCap } : {}),
+      },
+      ...resolved.overrides,
+    },
     {
       facebookEnabled,
       instagramEnabled,
@@ -101,10 +110,10 @@ export function buildMetaCampaignPlan(campaign) {
     },
 
     audience: {
-      countries: campaign.audience.countries,
-      ageMin: campaign.audience.ageMin,
-      ageMax: campaign.audience.ageMax,
-      gender: campaign.audience.gender,
+      countries: resolved.audience.countries,
+      ageMin: resolved.audience.ageMin,
+      ageMax: resolved.audience.ageMax,
+      gender: resolved.audience.gender,
       strategy: advanced.audience.strategy,
       mode: advanced.audience.mode,
       advantageAudience:
@@ -141,9 +150,9 @@ export function buildMetaCampaignPlan(campaign) {
 
     creative: {
       type: campaign.creative.type,
-      primaryText: campaign.creative.primaryText,
-      headline: campaign.creative.headline,
-      destinationUrl: campaign.creative.destinationUrl,
+      primaryText: resolved.creative.primaryText,
+      headline: resolved.creative.headline,
+      destinationUrl: resolved.creative.destinationUrl,
       imageUrl: campaign.product.imageUrl,
       metaImageHash,
       videoUrl: campaign.creative.videoUrl ?? null,
@@ -152,7 +161,7 @@ export function buildMetaCampaignPlan(campaign) {
         campaign.creative.thumbnailUrl ??
         campaign.product.imageUrl ??
         null,
-      callToAction: campaign.creative.callToAction,
+      callToAction: resolved.creative.callToAction,
       adaptation: advanced.creativeAdaptation,
     },
 

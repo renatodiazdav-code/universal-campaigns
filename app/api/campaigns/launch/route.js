@@ -151,6 +151,8 @@ export async function POST(request) {
         goal: campaign.goal,
         product: campaign.product,
         audience: campaign.audience,
+        settings: campaign.settings,
+        overrides: campaign.overrides,
         budget: campaign.budget,
         platforms: campaign.platforms,
         creative: campaign.creative,
