@@ -60,6 +60,10 @@ test("builds Advantage+ audience controls, suggestions and explicit Relay placem
     { id: "ca-1" },
     { id: "la-1" },
   ]);
+  assert.deepEqual(targeting.targeting_relaxation_types, {
+    custom_audience: 1,
+    lookalike: 1,
+  });
   assert.deepEqual(targeting.excluded_custom_audiences, [
     { id: "ca-2" },
   ]);
@@ -83,10 +87,9 @@ test("builds Advantage+ audience controls, suggestions and explicit Relay placem
     "facebook_reels",
   ]);
   assert.deepEqual(targeting.instagram_positions, ["story"]);
-  assert.equal("targeting_relaxation_types" in targeting, false);
 });
 
-test("specific audience delivery disables Advantage+ expansion", () => {
+test("specific audience delivery restricts Custom Audiences but keeps Lookalikes expanded for Sales", () => {
   const targeting = buildMetaAudienceTargeting({
     countries: ["PE"],
     ageMin: 25,
@@ -95,6 +98,10 @@ test("specific audience delivery disables Advantage+ expansion", () => {
     advantageAudience: false,
     allowAgeExpansion: false,
     allowGenderExpansion: false,
+    includedAudiences: [
+      { id: "ca-1", name: "Website visitors", kind: "CUSTOM" },
+      { id: "la-1", name: "Lookalike customers", kind: "LOOKALIKE" },
+    ],
   });
 
   assert.equal(targeting.age_min, 25);
@@ -103,6 +110,10 @@ test("specific audience delivery disables Advantage+ expansion", () => {
   assert.equal("age_range" in targeting, false);
   assert.deepEqual(targeting.targeting_automation, {
     advantage_audience: 0,
+  });
+  assert.deepEqual(targeting.targeting_relaxation_types, {
+    custom_audience: 0,
+    lookalike: 1,
   });
 });
 
@@ -164,6 +175,9 @@ test("creates a campaign-budget Meta ad set with audience targeting and Purchase
 
   const targeting = JSON.parse(capturedBody.get("targeting"));
   assert.deepEqual(targeting.custom_audiences, [{ id: "ca-1" }]);
+  assert.deepEqual(targeting.targeting_relaxation_types, {
+    custom_audience: 1,
+  });
   assert.deepEqual(targeting.excluded_custom_audiences, [
     { id: "ca-2" },
   ]);
