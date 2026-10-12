@@ -32,6 +32,12 @@ const DETAILED_TARGETING_TYPES = new Set([
   "office_type",
 ]);
 
+const ATTRIBUTION_WINDOWS = Object.freeze({
+  CLICK_THROUGH: new Set([1, 7]),
+  VIEW_THROUGH: new Set([1]),
+  ENGAGED_VIDEO_VIEW: new Set([1]),
+});
+
 function getAdAccountNodeId(adAccountId) {
   if (!adAccountId) {
     throw new Error("Missing Meta ad account ID");
@@ -175,6 +181,61 @@ function buildDetailedTargetingGroup(values) {
   }
 
   return Object.keys(group).length > 0 ? group : null;
+}
+
+export function normalizeMetaAttributionSpec(spec) {
+  if (spec == null) {
+    return null;
+  }
+
+  if (!Array.isArray(spec) || spec.length === 0) {
+    throw new Error("Meta attribution spec must be a non-empty array");
+  }
+
+  const normalized = [];
+  const seen = new Set();
+
+  for (const entry of spec) {
+    if (!entry || typeof entry !== "object" || Array.isArray(entry)) {
+      throw new Error("Meta attribution spec entries must be objects");
+    }
+
+    const eventType = String(entry.event_type ?? "").toUpperCase();
+    const windowDays = Number(entry.window_days);
+    const allowedWindows = ATTRIBUTION_WINDOWS[eventType];
+
+    if (!allowedWindows) {
+      throw new Error(
+        `Unsupported Meta attribution event type: ${eventType}`
+      );
+    }
+
+    if (!allowedWindows.has(windowDays)) {
+      throw new Error(
+        `Unsupported Meta attribution window for ${eventType}: ${windowDays}`
+      );
+    }
+
+    if (seen.has(eventType)) {
+      throw new Error(
+        `Duplicate Meta attribution event type: ${eventType}`
+      );
+    }
+
+    seen.add(eventType);
+    normalized.push({
+      event_type: eventType,
+      window_days: windowDays,
+    });
+  }
+
+  if (!seen.has("CLICK_THROUGH")) {
+    throw new Error(
+      "Meta attribution spec must include CLICK_THROUGH"
+    );
+  }
+
+  return normalized;
 }
 
 export function buildMetaAudienceTargeting({
@@ -323,6 +384,7 @@ export async function createAdvancedMetaAdSet({
   includedAudiences = [],
   excludedAudiences = [],
   detailedTargeting = [],
+  attributionSpec = null,
   optimizationGoal = "LINK_CLICKS",
   bidStrategy = "LOWEST_COST_WITHOUT_CAP",
   bidAmount = null,
@@ -370,6 +432,10 @@ export async function createAdvancedMetaAdSet({
     detailedTargeting,
   });
 
+  const normalizedAttributionSpec = normalizeMetaAttributionSpec(
+    attributionSpec
+  );
+
   const body = {
     name,
     campaign_id: campaignId,
@@ -381,6 +447,12 @@ export async function createAdvancedMetaAdSet({
     status,
     access_token: accessToken,
   };
+
+  if (normalizedAttributionSpec) {
+    body.attribution_spec = JSON.stringify(
+      normalizedAttributionSpec
+    );
+  }
 
   if (strategy === "AD_SET") {
     body.bid_strategy = bidStrategy;
