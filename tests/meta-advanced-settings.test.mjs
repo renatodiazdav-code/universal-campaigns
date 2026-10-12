@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 
 import { resolveMetaAdvancedSettings } from "../src/adapters/meta/advanced-settings.mjs";
 
-test("defaults Meta to Advantage+ audience and lowest cost bidding", () => {
+test("defaults Meta to Advantage+ audience lowest cost bidding and automatic attribution", () => {
   const resolved = resolveMetaAdvancedSettings();
 
   assert.equal(
@@ -24,6 +24,14 @@ test("defaults Meta to Advantage+ audience and lowest cost bidding", () => {
     "LOWEST_COST_WITHOUT_CAP"
   );
   assert.equal(resolved.bidding.costCap, null);
+
+  assert.deepEqual(resolved.attribution, {
+    mode: "AUTO",
+    model: "STANDARD",
+    clickWindowDays: null,
+    viewWindowDays: null,
+    engagedViewWindowDays: null,
+  });
 });
 
 test("defaults Meta creative adaptation to automatic fitting without generative expansion", () => {
@@ -55,6 +63,40 @@ test("supports specific audience delivery and a positive Meta cost cap", () => {
   assert.equal(resolved.bidding.strategy, "COST_CAP");
   assert.equal(resolved.bidding.apiStrategy, "COST_CAP");
   assert.equal(resolved.bidding.costCap, 12.5);
+});
+
+test("supports custom Standard Meta attribution windows", () => {
+  const resolved = resolveMetaAdvancedSettings({
+    attribution: {
+      mode: "STANDARD",
+      clickWindowDays: 1,
+      viewWindowDays: 0,
+      engagedViewWindowDays: 1,
+    },
+  });
+
+  assert.deepEqual(resolved.attribution, {
+    mode: "STANDARD",
+    model: "STANDARD",
+    clickWindowDays: 1,
+    viewWindowDays: 0,
+    engagedViewWindowDays: 1,
+  });
+});
+
+test("rejects unsupported Standard attribution windows", () => {
+  assert.throws(
+    () =>
+      resolveMetaAdvancedSettings({
+        attribution: {
+          mode: "STANDARD",
+          clickWindowDays: 28,
+          viewWindowDays: 1,
+          engagedViewWindowDays: 1,
+        },
+      }),
+    /Meta click attribution window must be 1 or 7 days/
+  );
 });
 
 test("resolves existing audiences and detailed targeting from Meta selections", () => {
