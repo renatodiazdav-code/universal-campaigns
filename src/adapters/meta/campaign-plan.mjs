@@ -1,5 +1,37 @@
 import { resolveMetaAdvancedSettings } from "./advanced-settings.mjs";
 
+export function buildMetaAttributionSpec(attribution, creativeType) {
+  if (!attribution || attribution.mode === "AUTO") {
+    return null;
+  }
+
+  const spec = [
+    {
+      event_type: "CLICK_THROUGH",
+      window_days: attribution.clickWindowDays,
+    },
+  ];
+
+  if (attribution.viewWindowDays === 1) {
+    spec.push({
+      event_type: "VIEW_THROUGH",
+      window_days: 1,
+    });
+  }
+
+  if (
+    attribution.engagedViewWindowDays === 1 &&
+    String(creativeType).toUpperCase() === "VIDEO"
+  ) {
+    spec.push({
+      event_type: "ENGAGED_VIDEO_VIEW",
+      window_days: 1,
+    });
+  }
+
+  return spec;
+}
+
 export function buildMetaCampaignPlan(campaign) {
   if (!campaign.platforms?.meta?.enabled) {
     throw new Error("Meta is not enabled for this campaign");
@@ -55,6 +87,11 @@ export function buildMetaCampaignPlan(campaign) {
     );
   }
 
+  const attributionSpec = buildMetaAttributionSpec(
+    advanced.attribution,
+    campaign.creative.type
+  );
+
   return {
     platform: "META",
 
@@ -85,6 +122,11 @@ export function buildMetaCampaignPlan(campaign) {
     },
 
     bidding: advanced.bidding,
+
+    attribution: {
+      ...advanced.attribution,
+      spec: attributionSpec,
+    },
 
     budget: {
       strategy: "CAMPAIGN",
