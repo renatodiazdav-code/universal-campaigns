@@ -1,6 +1,7 @@
+import { withUser } from "../../../src/application/auth-http.mjs";
 import { resolveBudgetAllocation } from "../../../src/application/resolve-budget-allocation.mjs";
 
-export async function POST(request) {
+export const POST = withUser(async function POST(request) {
   try {
     const input = await request.json();
 
@@ -26,4 +27,4 @@ export async function POST(request) {
       }
     );
   }
-}
+});

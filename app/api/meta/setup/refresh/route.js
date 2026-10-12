@@ -1,3 +1,4 @@
+import { withUser } from "../../../../../src/application/auth-http.mjs";
 import {
   loadMetaConnection,
   saveMetaConnection,
@@ -10,9 +11,9 @@ import {
   getMetaPixelEventStats,
 } from "../../../../../src/connectors/meta/pixel-health.mjs";
 
-export async function POST() {
+export const POST = withUser(async function POST(request, { user }) {
   try {
-    const connection = await loadMetaConnection();
+    const connection = await loadMetaConnection(user.id);
 
     if (!connection?.accessToken) {
       return Response.json(
@@ -37,7 +38,7 @@ export async function POST() {
       getInstagramAccounts: getMetaInstagramAccounts,
       getPixelDetails: getMetaPixelDetails,
       getPixelEventStats: getMetaPixelEventStats,
-      saveConnection: saveMetaConnection,
+      saveConnection: (connection) => saveMetaConnection(connection, user.id),
     });
 
     return Response.json({
@@ -60,4 +61,4 @@ export async function POST() {
       }
     );
   }
-}
+});

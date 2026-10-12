@@ -1,3 +1,4 @@
+import { withUser } from "../../../../src/application/auth-http.mjs";
 import { createUniversalCampaign } from "../../../../src/domain/universal-campaign.mjs";
 import { executeMetaCampaign } from "../../../../src/application/execute-meta-campaign.mjs";
 import {
@@ -15,7 +16,7 @@ import {
   getMetaPixelEventStats,
 } from "../../../../src/connectors/meta/pixel-health.mjs";
 
-export async function POST(request) {
+export const POST = withUser(async function POST(request, { user }) {
   try {
     const rawCampaignInput = await request.json();
 
@@ -75,7 +76,7 @@ export async function POST(request) {
       );
     }
 
-    const connection = await loadMetaConnection();
+    const connection = await loadMetaConnection(user.id);
 
     if (!connection?.accessToken) {
       return Response.json(
@@ -100,7 +101,7 @@ export async function POST(request) {
       getInstagramAccounts: getMetaInstagramAccounts,
       getPixelDetails: getMetaPixelDetails,
       getPixelEventStats: getMetaPixelEventStats,
-      saveConnection: saveMetaConnection,
+      saveConnection: (connection) => saveMetaConnection(connection, user.id),
     });
 
     if (!preparation.preflight.ready) {
@@ -143,7 +144,7 @@ export async function POST(request) {
       );
     }
 
-    const storedCampaign = await campaignStore.save({
+    const storedCampaign = await campaignStore.forUser(user.id).save({
       name: campaign.name,
       status: "PAUSED",
 
@@ -207,4 +208,4 @@ export async function POST(request) {
       }
     );
   }
-}
+});

@@ -1,7 +1,9 @@
+import { loadMetaConnection } from "../../../../src/application/meta-connection-store.mjs";
+import { withUser } from "../../../../src/application/auth-http.mjs";
 import { createMetaClient } from "../../../../src/connectors/meta/client.mjs";
 
 
-export async function POST(request) {
+export const POST = withUser(async function POST(request, { user }) {
 
   if (process.env.NODE_ENV !== "development") {
   return Response.json(
@@ -20,12 +22,13 @@ export async function POST(request) {
       );
     }
 
-    const adAccountId = process.env.META_SANDBOX_AD_ACCOUNT_ID;
-    const accessToken = process.env.META_SANDBOX_ACCESS_TOKEN;
+    const connection = await loadMetaConnection(user.id);
+    const adAccountId = connection?.setup?.adAccount?.id;
+    const accessToken = connection?.accessToken;
 
     if (!adAccountId || !accessToken) {
       return Response.json(
-        { error: "Meta sandbox configuration is missing" },
+        { error: "Connect your Meta account first" },
         { status: 500 }
       );
     }
@@ -77,4 +80,4 @@ export async function POST(request) {
       }
     );
   }
-}
+});

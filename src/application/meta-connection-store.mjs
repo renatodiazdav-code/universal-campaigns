@@ -1,43 +1,17 @@
-import fs from "node:fs/promises";
-import path from "node:path";
+import { createConnectionStore } from "./connection-store.mjs";
 
-const CONNECTION_FILE = path.join(
-  process.cwd(),
-  "data",
-  "meta-connection.json"
-);
-
-export async function saveMetaConnection(connection) {
-  await fs.mkdir(path.dirname(CONNECTION_FILE), {
-    recursive: true,
-  });
-
-  await fs.writeFile(
-    CONNECTION_FILE,
-    JSON.stringify(connection, null, 2),
-    "utf8"
-  );
+export async function saveMetaConnection(connection, userId) {
+  return createConnectionStore().forUser(userId).save("meta", connection);
+}
+export async function loadMetaConnection(userId) {
+  return createConnectionStore().forUser(userId).get("meta");
+}
+export async function deleteMetaConnection(userId) {
+  return createConnectionStore().forUser(userId).delete("meta");
 }
 
-export async function loadMetaConnection() {
-  try {
-    const content = await fs.readFile(
-      CONNECTION_FILE,
-      "utf8"
-    );
-
-    return JSON.parse(content);
-  } catch (error) {
-    if (error.code === "ENOENT") {
-      return null;
-    }
-
-    throw error;
-  }
-}
-
-export async function saveMetaPixelSelection(pixel) {
-  const connection = await loadMetaConnection();
+export async function saveMetaPixelSelection(pixel, userId) {
+  const connection = await loadMetaConnection(userId);
 
   if (!connection) {
     throw new Error("Meta is not connected");
@@ -51,13 +25,13 @@ export async function saveMetaPixelSelection(pixel) {
     },
   };
 
-  await saveMetaConnection(updatedConnection);
+  await saveMetaConnection(updatedConnection, userId);
 
   return updatedConnection;
 }
 
-export async function saveMetaSetupSnapshot(snapshot) {
-  const connection = await loadMetaConnection();
+export async function saveMetaSetupSnapshot(snapshot, userId) {
+  const connection = await loadMetaConnection(userId);
 
   if (!connection) {
     throw new Error("Meta is not connected");
@@ -70,17 +44,7 @@ export async function saveMetaSetupSnapshot(snapshot) {
       snapshot?.checkedAt ?? new Date().toISOString(),
   };
 
-  await saveMetaConnection(updatedConnection);
+  await saveMetaConnection(updatedConnection, userId);
 
   return updatedConnection;
-}
-
-export async function deleteMetaConnection() {
-  try {
-    await fs.unlink(CONNECTION_FILE);
-  } catch (error) {
-    if (error.code !== "ENOENT") {
-      throw error;
-    }
-  }
 }

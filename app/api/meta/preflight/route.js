@@ -1,14 +1,15 @@
+import { withUser } from "../../../../src/application/auth-http.mjs";
 import { loadMetaConnection } from "../../../../src/application/meta-connection-store.mjs";
 import { deriveMetaCapabilities } from "../../../../src/application/derive-meta-capabilities.mjs";
 import { checkMetaCampaignPreflight } from "../../../../src/application/check-meta-campaign-preflight.mjs";
 import { resolveCampaignBudgetInput } from "../../../../src/application/resolve-campaign-budget-input.mjs";
 import { createUniversalCampaign } from "../../../../src/domain/universal-campaign.mjs";
 
-export async function POST(request) {
+export const POST = withUser(async function POST(request, { user }) {
   try {
     const rawCampaignInput = await request.json();
 
-    const connection = await loadMetaConnection();
+    const connection = await loadMetaConnection(user.id);
 
     if (!connection?.accessToken) {
       return Response.json(
@@ -79,4 +80,4 @@ export async function POST(request) {
       }
     );
   }
-}
+});

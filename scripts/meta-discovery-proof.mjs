@@ -1,4 +1,6 @@
-import "dotenv/config";
+import dotenv from "dotenv";
+dotenv.config({ path: ".env.local", quiet: true });
+dotenv.config({ quiet: true });
 import { createMetaClient } from "../src/connectors/meta/client.mjs";
 
 const accessToken = process.env.META_ACCESS_TOKEN;

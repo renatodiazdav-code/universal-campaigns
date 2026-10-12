@@ -1,3 +1,4 @@
+import { withUser, appOrigin } from "../../../../../src/application/auth-http.mjs";
 import { NextResponse } from "next/server";
 import { saveMetaConnection } from "../../../../../src/application/meta-connection-store.mjs";
 import { createMetaClient } from "../../../../../src/connectors/meta/client.mjs";
@@ -9,7 +10,7 @@ import {
   getMetaPixelEventStats,
 } from "../../../../../src/connectors/meta/pixel-health.mjs";
 
-export async function GET(request) {
+export const GET = withUser(async function GET(request, { user, sessionHash, auth }) {
   try {
     const url = new URL(request.url);
 
@@ -39,7 +40,8 @@ export async function GET(request) {
     if (
       !returnedState ||
       !storedState ||
-      returnedState !== storedState
+      returnedState !== storedState ||
+      !auth.consumeOAuthState(returnedState, user.id, sessionHash)
     ) {
       const response = NextResponse.json(
         {
@@ -87,8 +89,7 @@ export async function GET(request) {
       );
     }
 
-    const redirectUri =
-      "http://localhost:3000/api/meta/auth/callback";
+    const redirectUri = `${appOrigin(request)}/api/meta/auth/callback`;
 
     const tokenParams = new URLSearchParams({
       client_id: appId,
@@ -133,11 +134,11 @@ export async function GET(request) {
       getInstagramAccounts: getMetaInstagramAccounts,
       getPixelDetails: getMetaPixelDetails,
       getPixelEventStats: getMetaPixelEventStats,
-      saveConnection: saveMetaConnection,
+      saveConnection: (connection) => saveMetaConnection(connection, user.id),
     });
 
     const response = NextResponse.redirect(
-      "http://localhost:3000/campaign/new?meta=connected"
+      `${appOrigin(request)}/campaigns?meta=connected`
     );
 
     response.cookies.delete("meta_oauth_state");
@@ -162,4 +163,4 @@ export async function GET(request) {
 
     return response;
   }
-}
+});

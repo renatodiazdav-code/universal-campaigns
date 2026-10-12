@@ -1,7 +1,7 @@
+import { withUser, appOrigin } from "../../../../../src/application/auth-http.mjs";
 import { NextResponse } from "next/server";
-import crypto from "node:crypto";
 
-export async function GET() {
+export const GET = withUser(async function GET(request, { user, sessionHash, auth }) {
   const appId = process.env.META_APP_ID;
 
   if (!appId) {
@@ -15,8 +15,7 @@ export async function GET() {
     );
   }
 
-  const redirectUri =
-    "http://localhost:3000/api/meta/auth/callback";
+  const redirectUri = `${appOrigin(request)}/api/meta/auth/callback`;
 
   const scopes = [
     "ads_management",
@@ -25,7 +24,7 @@ export async function GET() {
     "business_management",
   ];
 
-  const state = crypto.randomBytes(32).toString("hex");
+  const state = auth.issueOAuthState(user.id, sessionHash);
 
   const params = new URLSearchParams({
     client_id: appId,
@@ -43,10 +42,10 @@ export async function GET() {
   response.cookies.set("meta_oauth_state", state, {
     httpOnly: true,
     sameSite: "lax",
-    secure: false,
+    secure: appOrigin(request).startsWith("https:"),
     maxAge: 60 * 10,
     path: "/",
   });
 
   return response;
-}
+});

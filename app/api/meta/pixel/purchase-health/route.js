@@ -1,3 +1,4 @@
+import { withUser } from "../../../../../src/application/auth-http.mjs";
 import { loadMetaConnection } from "../../../../../src/application/meta-connection-store.mjs";
 import { inspectMetaPurchaseHealth } from "../../../../../src/application/inspect-meta-purchase-health.mjs";
 import {
@@ -5,9 +6,9 @@ import {
   getMetaPixelEventStats,
 } from "../../../../../src/connectors/meta/pixel-health.mjs";
 
-export async function GET() {
+export const GET = withUser(async function GET(request, { user }) {
   try {
-    const connection = await loadMetaConnection();
+    const connection = await loadMetaConnection(user.id);
 
     if (!connection?.accessToken) {
       return Response.json(
@@ -64,4 +65,4 @@ export async function GET() {
       }
     );
   }
-}
+});

@@ -1,90 +1,33 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { dirname, join } from "node:path";
 import { randomUUID } from "node:crypto";
+import { getRelayDatabase, requireOwner } from "../infrastructure/database.mjs";
 
-const DEFAULT_FILE_PATH = join(
-  process.cwd(),
-  "data",
-  "campaigns.json"
-);
-
-async function readCampaignFile(filePath) {
-  try {
-    const content = await readFile(filePath, "utf8");
-
-    if (!content.trim()) {
-      return [];
-    }
-
-    const campaigns = JSON.parse(content);
-
-    if (!Array.isArray(campaigns)) {
-      throw new Error("Campaign store must contain an array");
-    }
-
-    return campaigns;
-  } catch (error) {
-    if (error.code === "ENOENT") {
-      return [];
-    }
-
-    throw error;
-  }
-}
-
-async function writeCampaignFile(filePath, campaigns) {
-  await mkdir(dirname(filePath), {
-    recursive: true,
-  });
-
-  await writeFile(
-    filePath,
-    JSON.stringify(campaigns, null, 2),
-    "utf8"
-  );
-}
-
-export function createCampaignStore({
-  filePath = DEFAULT_FILE_PATH,
-} = {}) {
+export function createCampaignStore({ db = getRelayDatabase() } = {}) {
   return {
-    async save(campaignRecord) {
-      if (!campaignRecord) {
-        throw new Error("Campaign record is required");
-      }
-
-      const campaigns = await readCampaignFile(filePath);
-
-      const now = new Date().toISOString();
-
-      const storedCampaign = {
-        id: campaignRecord.id || randomUUID(),
-        ...campaignRecord,
-        createdAt: campaignRecord.createdAt || now,
-        updatedAt: now,
+    forUser(userId) {
+      requireOwner(db, userId);
+      return {
+        async save(record) {
+          if (!record || typeof record !== "object" || Array.isArray(record)) throw new Error("Campaign record is required");
+          const now = new Date().toISOString();
+          const stored = { ...record, id: record.id || randomUUID(), userId, createdAt: record.createdAt || now, updatedAt: now };
+          const result = db.prepare(`INSERT INTO campaigns (id, user_id, payload, created_at, updated_at) VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET payload = excluded.payload, updated_at = excluded.updated_at
+            WHERE campaigns.user_id = excluded.user_id`)
+            .run(stored.id, userId, JSON.stringify(stored), stored.createdAt, now);
+          if (result.changes !== 1) throw new Error("Campaign does not belong to this user");
+          return stored;
+        },
+        async list() {
+          return db.prepare("SELECT payload FROM campaigns WHERE user_id = ? ORDER BY created_at DESC, id DESC").all(userId)
+            .map((row) => JSON.parse(row.payload));
+        },
+        async getById(id) {
+          const row = db.prepare("SELECT payload FROM campaigns WHERE user_id = ? AND id = ?").get(userId, id);
+          return row ? JSON.parse(row.payload) : null;
+        },
       };
-
-      campaigns.unshift(storedCampaign);
-
-      await writeCampaignFile(filePath, campaigns);
-
-      return storedCampaign;
-    },
-
-    async list() {
-      return readCampaignFile(filePath);
-    },
-
-    async getById(id) {
-      const campaigns = await readCampaignFile(filePath);
-
-      return (
-        campaigns.find(
-          (campaign) => campaign.id === id
-        ) || null
-      );
     },
   };
 }
 
-export const campaignStore = createCampaignStore();
+export const campaignStore = { forUser: (userId) => createCampaignStore().forUser(userId) };

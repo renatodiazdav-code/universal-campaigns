@@ -156,6 +156,7 @@ export default function NewCampaignPage() {
     async function loadProducts() {
       try {
         const response = await fetch("/api/products");
+        if (response.status === 401) { window.location.assign("/login"); return; }
         const data = await response.json();
 
         if (!response.ok) {

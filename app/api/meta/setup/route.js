@@ -1,10 +1,11 @@
+import { withUser } from "../../../../src/application/auth-http.mjs";
 import { createMetaClient } from "../../../../src/connectors/meta/client.mjs";
 import { discoverMetaSetup } from "../../../../src/application/discover-meta-setup.mjs";
 import { loadMetaConnection } from "../../../../src/application/meta-connection-store.mjs";
 
-export async function GET() {
+export const GET = withUser(async function GET(request, { user }) {
   try {
-    const connection = await loadMetaConnection();
+    const connection = await loadMetaConnection(user.id);
 
     if (!connection?.accessToken) {
       return Response.json(
@@ -39,4 +40,4 @@ export async function GET() {
       }
     );
   }
-}
+});

@@ -24,7 +24,7 @@ export default function Home() {
           between Meta and TikTok.
         </p>
 
-        <Link href="/campaign/new" className="primaryButton">
+        <Link href="/login" className="primaryButton">
             Create campaign
         </Link>
       </section>

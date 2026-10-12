@@ -85,6 +85,7 @@ export default function CampaignsPage() {
         async function loadCampaigns() {
             try {
                 const response = await fetch("/api/campaigns");
+            if (response.status === 401) { window.location.assign("/login"); return; }
                 const data = await response.json();
 
                 if (!response.ok) {

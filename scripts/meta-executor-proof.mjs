@@ -1,8 +1,13 @@
+import dotenv from "dotenv";
+dotenv.config({ path: ".env.local", quiet: true });
+dotenv.config({ quiet: true });
+const userId = process.env.RELAY_USER_ID;
+if (!userId) throw new Error("Set RELAY_USER_ID to the account running this proof");
 import { createUniversalCampaign } from "../src/domain/universal-campaign.mjs";
 import { executeMetaCampaign } from "../src/application/execute-meta-campaign.mjs";
 import { loadMetaConnection } from "../src/application/meta-connection-store.mjs";
 
-const connection = await loadMetaConnection();
+const connection = await loadMetaConnection(userId);
 
 if (!connection?.accessToken) {
   throw new Error("Meta is not connected");

@@ -1,9 +1,10 @@
+import { withUser } from "../../../src/application/auth-http.mjs";
 import { createUniversalCampaign } from "../../../src/domain/universal-campaign.mjs";
 import { buildPlatformPlans } from "../../../src/application/build-platform-plans.mjs";
 import { checkBudgetCompatibility } from "../../../src/application/check-budget-compatibility.mjs";
 import { resolveCampaignBudgetInput } from "../../../src/application/resolve-campaign-budget-input.mjs";
 
-export async function POST(request) {
+export const POST = withUser(async function POST(request) {
   try {
     const rawInput = await request.json();
 
@@ -55,4 +56,4 @@ export async function POST(request) {
       }
     );
   }
-}
+});

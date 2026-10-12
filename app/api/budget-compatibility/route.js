@@ -1,6 +1,7 @@
+import { withUser } from "../../../src/application/auth-http.mjs";
 import { checkBudgetCompatibility } from "../../../src/application/check-budget-compatibility.mjs";
 
-export async function POST(request) {
+export const POST = withUser(async function POST(request) {
   try {
     const input = await request.json();
 
@@ -30,4 +31,4 @@ export async function POST(request) {
       }
     );
   }
-}
+});

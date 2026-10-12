@@ -1,9 +1,10 @@
+import { withUser } from "../../../../src/application/auth-http.mjs";
 import { loadMetaConnection } from "../../../../src/application/meta-connection-store.mjs";
 import { deriveMetaCapabilities } from "../../../../src/application/derive-meta-capabilities.mjs";
 
-export async function GET() {
+export const GET = withUser(async function GET(request, { user }) {
   try {
-    const connection = await loadMetaConnection();
+    const connection = await loadMetaConnection(user.id);
 
     if (!connection?.accessToken) {
       const result = deriveMetaCapabilities({
@@ -50,4 +51,4 @@ export async function GET() {
       }
     );
   }
-}
+});

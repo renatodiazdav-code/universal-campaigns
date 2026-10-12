@@ -1,4 +1,6 @@
-import "dotenv/config";
+import dotenv from "dotenv";
+dotenv.config({ path: ".env.local", quiet: true });
+dotenv.config({ quiet: true });
 import { createMetaClient } from "../src/connectors/meta/client.mjs";
 
 const adAccountId = process.env.META_SANDBOX_AD_ACCOUNT_ID;

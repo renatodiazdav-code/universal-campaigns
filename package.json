@@ -7,7 +7,9 @@
     "test": "node --test tests/*.test.mjs",
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "setup:local": "node scripts/setup-local-auth.mjs",
+    "migrate:legacy": "node scripts/migrate-legacy-data.mjs"
   },
   "repository": {
     "type": "git",
@@ -26,5 +28,8 @@
     "next": "^16.4.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0"
+  },
+  "engines": {
+    "node": ">=24.0.0"
   }
 }

@@ -1,32 +1,16 @@
-import { getDevShopifyAccessToken } from "../../../../src/connectors/shopify/dev-auth.mjs";
+import { withUser } from "../../../../src/application/auth-http.mjs";
+import { createConnectionStore } from "../../../../src/application/connection-store.mjs";
 import { inspectShopifyWebPixelAccess } from "../../../../src/connectors/shopify/web-pixel.mjs";
 
-export async function GET() {
+export const GET = withUser(async function GET(request, { user }) {
   try {
-    const shop = process.env.SHOPIFY_SHOP;
-    const clientId = process.env.SHOPIFY_CLIENT_ID;
-    const clientSecret = process.env.SHOPIFY_CLIENT_SECRET;
-
-    if (!shop || !clientId || !clientSecret) {
-      return Response.json(
-        {
-          version: 1,
-          status: "NOT_CONNECTED",
-          error: "Missing Shopify environment variables",
-        },
-        { status: 500 }
-      );
-    }
-
-    const tokenData = await getDevShopifyAccessToken({
-      shop,
-      clientId,
-      clientSecret,
-    });
+    const connection = await createConnectionStore().forUser(user.id).get("shopify");
+    if (!connection?.shop || !connection.accessToken) return Response.json({ status: "NOT_CONNECTED", error: "Connect your Shopify store first." }, { status: 409 });
+    const shop = connection.shop;
 
     const webPixel = await inspectShopifyWebPixelAccess({
       shop,
-      accessToken: tokenData.access_token,
+      accessToken: connection.accessToken,
     });
 
     return Response.json({
@@ -55,4 +39,4 @@ export async function GET() {
       { status: 500 }
     );
   }
-}
+});

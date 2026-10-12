@@ -1,12 +1,13 @@
+import { withUser } from "../../../../src/application/auth-http.mjs";
 import { loadMetaConnection } from "../../../../src/application/meta-connection-store.mjs";
 import {
   browseMetaDetailedTargeting,
   searchMetaDetailedTargeting,
 } from "../../../../src/connectors/meta/audience-discovery.mjs";
 
-export async function GET(request) {
+export const GET = withUser(async function GET(request, { user }) {
   try {
-    const connection = await loadMetaConnection();
+    const connection = await loadMetaConnection(user.id);
 
     if (!connection?.accessToken) {
       return Response.json(
@@ -69,4 +70,4 @@ export async function GET(request) {
       { status: unsupportedBrowse ? 400 : 500 }
     );
   }
-}
+});

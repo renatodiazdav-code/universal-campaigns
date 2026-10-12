@@ -1,3 +1,4 @@
+import { withUser } from "../../../src/application/auth-http.mjs";
 import { campaignStore } from "../../../src/application/campaign-store.mjs";
 import { loadMetaConnection } from "../../../src/application/meta-connection-store.mjs";
 import { getMetaCampaignStatus } from "../../../src/application/get-meta-campaign-status.mjs";
@@ -39,10 +40,10 @@ function buildRelayPerformance({
   });
 }
 
-export async function GET() {
+export const GET = withUser(async function GET(request, { user }) {
   try {
-    const campaigns = await campaignStore.list();
-    const connection = await loadMetaConnection();
+    const campaigns = await campaignStore.forUser(user.id).list();
+    const connection = await loadMetaConnection(user.id);
 
     const campaignsWithLiveData = await Promise.all(
       campaigns.map(async (campaign) => {
@@ -117,4 +118,4 @@ export async function GET() {
       }
     );
   }
-}
+});

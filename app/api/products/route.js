@@ -1,49 +1,15 @@
-import {
-  getDevShopifyAccessToken,
-} from "../../../src/connectors/shopify/dev-auth.mjs";
+import { withUser } from "../../../src/application/auth-http.mjs";
+import { createConnectionStore } from "../../../src/application/connection-store.mjs";
+import { getShopifyProducts, shopifyProductToUniversalProduct } from "../../../src/connectors/shopify/products.mjs";
 
-import {
-  getShopifyProducts,
-  shopifyProductToUniversalProduct,
-} from "../../../src/connectors/shopify/products.mjs";
-
-export async function GET() {
+export const GET = withUser(async function GET(request, { user }) {
+  const connection = await createConnectionStore().forUser(user.id).get("shopify");
+  if (!connection?.accessToken || !connection.shop) return Response.json({ error: "Connect your Shopify store to load products.", status: "NOT_CONNECTED" }, { status: 409 });
   try {
-    const shop = process.env.SHOPIFY_SHOP;
-    const clientId = process.env.SHOPIFY_CLIENT_ID;
-    const clientSecret = process.env.SHOPIFY_CLIENT_SECRET;
-
-    if (!shop || !clientId || !clientSecret) {
-      return Response.json(
-        { error: "Missing Shopify environment variables" },
-        { status: 500 }
-      );
-    }
-
-    const tokenData = await getDevShopifyAccessToken({
-      shop,
-      clientId,
-      clientSecret,
-    });
-
-    const products = await getShopifyProducts({
-      shop,
-      accessToken: tokenData.access_token,
-    });
-
-    const universalProducts = products.map((product) =>
-      shopifyProductToUniversalProduct(product, shop)
-    );
-
-    return Response.json({
-      products: universalProducts,
-    });
+    const products = await getShopifyProducts({ shop: connection.shop, accessToken: connection.accessToken });
+    return Response.json({ products: products.map((product) => shopifyProductToUniversalProduct(product, connection.shop)) });
   } catch (error) {
-    console.error(error);
-
-    return Response.json(
-      { error: "Could not load Shopify products" },
-      { status: 500 }
-    );
+    console.error("Shopify product loading failed:", error.message);
+    return Response.json({ error: "Could not load your store products. Check your Shopify connection." }, { status: 502 });
   }
-}
+});

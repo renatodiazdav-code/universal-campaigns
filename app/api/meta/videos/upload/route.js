@@ -1,9 +1,10 @@
+import { withUser } from "../../../../../src/application/auth-http.mjs";
 import { loadMetaConnection } from "../../../../../src/application/meta-connection-store.mjs";
 import { uploadMetaAdVideo } from "../../../../../src/connectors/meta/video-upload.mjs";
 
-export async function POST(request) {
+export const POST = withUser(async function POST(request, { user }) {
   try {
-    const connection = await loadMetaConnection();
+    const connection = await loadMetaConnection(user.id);
 
     if (!connection?.accessToken) {
       return Response.json(
@@ -90,4 +91,4 @@ export async function POST(request) {
       }
     );
   }
-}
+});
