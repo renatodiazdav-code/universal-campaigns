@@ -1,5 +1,5 @@
 import { buildMetaCampaignPlan } from "../adapters/meta/campaign-plan.mjs";
-import { createMetaClient } from "../connectors/meta/client.mjs";
+import { createRelayMetaClient } from "../connectors/meta/relay-client.mjs";
 
 function toMinorUnits(amount) {
   return Math.round(Number(amount) * 100);
@@ -93,7 +93,7 @@ export async function executeMetaCampaign({
 
   const meta =
     metaClient ??
-    createMetaClient({
+    createRelayMetaClient({
       adAccountId: adAccount.id,
       accessToken: connection.accessToken,
     });
@@ -163,6 +163,12 @@ export async function executeMetaCampaign({
         metaPlan.audience.allowAgeExpansion,
       allowGenderExpansion:
         metaPlan.audience.allowGenderExpansion,
+      includedAudiences:
+        metaPlan.audience.includedAudiences,
+      excludedAudiences:
+        metaPlan.audience.excludedAudiences,
+      detailedTargeting:
+        metaPlan.audience.detailedTargeting,
 
       optimizationGoal: "OFFSITE_CONVERSIONS",
       bidAmount,
@@ -261,8 +267,15 @@ export async function executeMetaCampaign({
           ageMax: metaPlan.audience.ageMax,
           gender: metaPlan.audience.gender,
           strategy: metaPlan.audience.strategy,
+          mode: metaPlan.audience.mode,
           advantageAudience:
             metaPlan.audience.advantageAudience,
+          includedAudiences:
+            metaPlan.audience.includedAudiences,
+          excludedAudiences:
+            metaPlan.audience.excludedAudiences,
+          detailedTargeting:
+            metaPlan.audience.detailedTargeting,
         },
         bidding: {
           strategy: metaPlan.bidding.strategy,
