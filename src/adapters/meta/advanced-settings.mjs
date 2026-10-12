@@ -19,6 +19,25 @@ const PLACEMENT_POSITIONS = new Set([
   "REELS",
 ]);
 
+const DETAILED_TARGETING_TYPES = new Set([
+  "interests",
+  "behaviors",
+  "life_events",
+  "family_statuses",
+  "industries",
+  "work_employers",
+  "work_positions",
+  "education_schools",
+  "education_majors",
+  "income",
+  "home_ownership",
+  "home_type",
+  "household_composition",
+  "generation",
+  "moms",
+  "office_type",
+]);
+
 const RECOMMENDED_POSITIONS = [
   "FEED",
   "STORIES",
@@ -45,6 +64,133 @@ function toPositiveNumber(value, label) {
   }
 
   return number;
+}
+
+function normalizeAudienceList(value, label) {
+  if (value == null) {
+    return [];
+  }
+
+  if (!Array.isArray(value)) {
+    throw new Error(`${label} must be an array`);
+  }
+
+  const normalized = [];
+  const seen = new Set();
+
+  for (const item of value) {
+    if (!item || typeof item !== "object" || Array.isArray(item)) {
+      throw new Error(`${label} entries must be objects`);
+    }
+
+    const id = String(item.id ?? "").trim();
+    const name = String(item.name ?? "").trim();
+
+    if (!id || !name) {
+      throw new Error(`${label} entries need an id and name`);
+    }
+
+    if (seen.has(id)) {
+      continue;
+    }
+
+    seen.add(id);
+    const subtype = String(item.subtype ?? "UNKNOWN").toUpperCase();
+
+    normalized.push({
+      id,
+      name,
+      subtype,
+      kind:
+        String(item.kind ?? subtype).toUpperCase() === "LOOKALIKE"
+          ? "LOOKALIKE"
+          : "CUSTOM",
+    });
+  }
+
+  return normalized;
+}
+
+function normalizeDetailedTargeting(value) {
+  if (value == null) {
+    return [];
+  }
+
+  if (!Array.isArray(value)) {
+    throw new Error("Meta detailed targeting must be an array");
+  }
+
+  const normalized = [];
+  const seen = new Set();
+
+  for (const item of value) {
+    if (!item || typeof item !== "object" || Array.isArray(item)) {
+      throw new Error("Meta detailed targeting entries must be objects");
+    }
+
+    const id = String(item.id ?? "").trim();
+    const name = String(item.name ?? "").trim();
+    const type = String(item.type ?? "").toLowerCase();
+
+    if (!id || !name || !type) {
+      throw new Error(
+        "Meta detailed targeting entries need an id, name and type"
+      );
+    }
+
+    if (!DETAILED_TARGETING_TYPES.has(type)) {
+      throw new Error(`Unsupported Meta detailed targeting type: ${type}`);
+    }
+
+    const key = `${type}:${id}`;
+    if (seen.has(key)) {
+      continue;
+    }
+
+    seen.add(key);
+    normalized.push({
+      id,
+      name,
+      type,
+      path: Array.isArray(item.path) ? item.path.map(String) : [],
+    });
+  }
+
+  return normalized;
+}
+
+function resolveMetaAudience(metaOverrides, audienceStrategy) {
+  const audienceInput = normalizeObject(
+    metaOverrides.audience,
+    "Meta audience"
+  );
+
+  const mode =
+    audienceStrategy === "MANUAL"
+      ? "SPECIFIC"
+      : "ADVANTAGE_PLUS";
+
+  return {
+    strategy: audienceStrategy,
+    mode,
+    advantageAudience: audienceStrategy === "ADVANTAGE_PLUS",
+    // In Meta's Advantage+ flow, maximum age and gender are suggestions.
+    // In the specific-audience flow they are restrictions. Location and
+    // minimum age remain campaign controls either way.
+    allowAgeExpansion: audienceStrategy === "ADVANTAGE_PLUS",
+    allowGenderExpansion: audienceStrategy === "ADVANTAGE_PLUS",
+    includedAudiences: normalizeAudienceList(
+      audienceInput.includedAudiences,
+      "Meta included audiences"
+    ),
+    excludedAudiences: normalizeAudienceList(
+      audienceInput.excludedAudiences,
+      "Meta excluded audiences"
+    ),
+    detailedTargeting: normalizeDetailedTargeting(
+      audienceInput.detailedTargeting
+    ),
+  };
 }
 
 function normalizePlacementPositions(value, label) {
@@ -208,14 +354,10 @@ export function resolveMetaAdvancedSettings(
   }
 
   return {
-    audience: {
-      strategy: audienceStrategy,
-      advantageAudience:
-        audienceStrategy === "ADVANTAGE_PLUS",
-      // Basic age and gender remain hard limits in Relay.
-      allowAgeExpansion: false,
-      allowGenderExpansion: false,
-    },
+    audience: resolveMetaAudience(
+      metaOverrides,
+      audienceStrategy
+    ),
 
     bidding: {
       strategy: biddingStrategy,
