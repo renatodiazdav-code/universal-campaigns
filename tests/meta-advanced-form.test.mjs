@@ -23,13 +23,16 @@ test("maps default Meta advanced form to Relay recommended overrides", () => {
     bidding: {
       strategy: "LOWEST_COST",
     },
+    attribution: {
+      mode: "AUTO",
+    },
     placements: {
       mode: "RECOMMENDED",
     },
   });
 });
 
-test("maps specific audience selections cost cap and manual placements", () => {
+test("maps specific audience selections cost cap custom attribution and manual placements", () => {
   const overrides = buildMetaOverridesFromForm({
     audienceStrategy: "MANUAL",
     includedAudiences: [
@@ -64,6 +67,10 @@ test("maps specific audience selections cost cap and manual placements", () => {
     ],
     biddingStrategy: "COST_CAP",
     costCap: "17.50",
+    attributionMode: "STANDARD",
+    clickAttributionDays: "1",
+    viewAttributionDays: "0",
+    engagedViewAttributionDays: "1",
     placementsMode: "MANUAL",
     facebookPositions: ["FEED", "REELS"],
     instagramPositions: ["STORIES"],
@@ -108,6 +115,12 @@ test("maps specific audience selections cost cap and manual placements", () => {
       strategy: "COST_CAP",
       costCap: 17.5,
     },
+    attribution: {
+      mode: "STANDARD",
+      clickWindowDays: 1,
+      viewWindowDays: 0,
+      engagedViewWindowDays: 1,
+    },
     placements: {
       mode: "MANUAL",
       facebook: ["FEED", "REELS"],
@@ -141,6 +154,7 @@ test("rejects invalid cost cap and empty manual placements", () => {
       audienceStrategy: "ADVANTAGE_PLUS",
       biddingStrategy: "COST_CAP",
       costCap: 0,
+      attributionMode: "AUTO",
       placementsMode: "RECOMMENDED",
     }),
     {
@@ -153,6 +167,7 @@ test("rejects invalid cost cap and empty manual placements", () => {
     validateMetaAdvancedForm({
       audienceStrategy: "ADVANTAGE_PLUS",
       biddingStrategy: "LOWEST_COST",
+      attributionMode: "AUTO",
       placementsMode: "MANUAL",
       facebookPositions: [],
       instagramPositions: [],
@@ -160,6 +175,40 @@ test("rejects invalid cost cap and empty manual placements", () => {
     {
       valid: false,
       error: "Select at least one Facebook or Instagram placement.",
+    }
+  );
+});
+
+test("validates Standard attribution windows", () => {
+  assert.deepEqual(
+    validateMetaAdvancedForm({
+      audienceStrategy: "ADVANTAGE_PLUS",
+      biddingStrategy: "LOWEST_COST",
+      attributionMode: "STANDARD",
+      clickAttributionDays: "7",
+      viewAttributionDays: "1",
+      engagedViewAttributionDays: "1",
+      placementsMode: "RECOMMENDED",
+    }),
+    {
+      valid: true,
+      error: null,
+    }
+  );
+
+  assert.deepEqual(
+    validateMetaAdvancedForm({
+      audienceStrategy: "ADVANTAGE_PLUS",
+      biddingStrategy: "LOWEST_COST",
+      attributionMode: "STANDARD",
+      clickAttributionDays: "3",
+      viewAttributionDays: "1",
+      engagedViewAttributionDays: "1",
+      placementsMode: "RECOMMENDED",
+    }),
+    {
+      valid: false,
+      error: "Click attribution must be 1 or 7 days.",
     }
   );
 });
