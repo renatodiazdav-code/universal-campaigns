@@ -1,32 +1,29 @@
 import Link from "next/link";
+import StartShopify from "./StartShopify";
 export default function Home() {
   return (
     <main className="shell">
       <header className="header">
         <strong className="logo">Relay</strong>
 
-        <span className="badge">
-          Product Proof v0.1
-        </span>
+        <Link href="/login" className="secondaryButton">Log in</Link>
       </header>
 
       <section className="hero">
-        <p className="eyebrow">CREATE CAMPAIGN</p>
+        <p className="eyebrow">BUILT FOR SHOPIFY STORES</p>
 
         <h1>
-          One campaign.
+          Your Shopify products.
           <br />
-          Multiple ad platforms.
+          Ads on Meta. TikTok is next.
         </h1>
 
         <p className="subtitle">
-          Create a campaign once and let Relay handle the differences
-          between Meta and TikTok.
+          Connect your store, choose a product, and build one campaign for your ad platforms.
         </p>
 
-        <Link href="/login" className="primaryButton">
-            Create campaign
-        </Link>
+        <StartShopify />
+        <p className="reviewDescription">Already use Relay? <Link href="/login">Log in</Link></p>
       </section>
 
       <section className="platforms">
@@ -36,7 +33,7 @@ export default function Home() {
         <span>→</span>
         <span>Meta</span>
         <span>+</span>
-        <span>TikTok</span>
+        <span>TikTok · coming soon</span>
       </section>
     </main>
   );

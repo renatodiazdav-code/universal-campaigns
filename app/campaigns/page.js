@@ -117,21 +117,21 @@ export default function CampaignsPage() {
                     href="/campaign/new"
                     className="continueButton"
                 >
-                    + Create campaign
+                    + Start campaign
                 </a>
             </header>
 
             <section className="campaignContent">
                 <p className="eyebrow">
-                    CAMPAIGNS
+                    YOUR DASHBOARD
                 </p>
 
                 <h1 className="campaignTitle">
-                    Your campaigns
+                    Welcome to Relay
                 </h1>
 
                 <p className="campaignSubtitle">
-                    See how your ads are performing without opening Ads Manager.
+                    Your Shopify store and ad accounts in one place. Connect Meta before you launch your first campaign.
                 </p>
 
                 <ConnectedAccounts />
@@ -163,7 +163,7 @@ export default function CampaignsPage() {
                                 href="/campaign/new"
                                 className="continueButton"
                             >
-                                Create campaign
+                                Start campaign
                             </a>
                         </div>
                     )}

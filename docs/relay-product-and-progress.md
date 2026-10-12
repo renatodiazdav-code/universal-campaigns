@@ -5,7 +5,7 @@ Updated: 2026-10-12
 ## Confirmed product direction
 
 - Shopify ecommerce sales is the initial scope.
-- Registration leads to the dashboard. Shopify, Meta and TikTok connections are available there.
+- The landing starts with Shopify authorization. Shopify grants identify the merchant's Relay account and link the store before the dashboard; Meta and TikTok connections are available there.
 - One campaign creator: product, platforms, audience/budget, creative, review.
 - Universal configures shared values. Meta Ads and TikTok Ads allow independent overrides.
 - Facebook and Instagram belong to the Meta integration.
@@ -27,7 +27,7 @@ Updated: 2026-10-12
 
 ## Backend accounts change
 
-- No UI redesign: only a minimal login/register form to exercise the account APIs.
+- Shopify-first sign-up from the landing, with legacy email registration available separately for existing account workflows.
 - Meta OAuth state is tied to the initiating user/session and callback URLs use APP_URL.
 - Business endpoints never fall back to global developer connections.
 - Explicit migration preserves old developer files and assigns their data only to a chosen registered account.
@@ -37,7 +37,7 @@ Updated: 2026-10-12
 - Meta creates paused campaigns; activation/pause management is still pending.
 - TikTok execution and authorization are not implemented. Its plan is a Relay plan, not a verified native API payload.
 - Renato reports a TikTok Business account under review. Confirm which account/app approval is pending before live integration tests.
-- Merchants can authorize their own Shopify stores from the dashboard. Signed, single-use callbacks bind to the user/session/store; encrypted expiring offline tokens renew automatically. Product APIs use that user's store, support pagination/search, and retain Shopify's published storefront URLs. See `docs/shopify-connection.md` for app setup and live validation requirements.
+- Merchant sign-up begins on the landing, using a Shopify authorization grant to establish or recover a Relay session tied to the verified store. An HttpOnly browser-bound, single-use state protects onboarding. Existing Relay email sign-in and owner-scoped connection remain for compatibility. Product APIs use the store's encrypted expiring token, support pagination/search, and retain Shopify's published storefront URLs. See `docs/shopify-connection.md` for app setup and live validation requirements.
 - Account registration/login/logout, expiring sessions, authenticated APIs, owner-scoped SQLite campaigns and encrypted per-user connections are implemented. See `docs/backend-accounts.md` for setup and deployment constraints. Email verification and recovery remain pending.
 - Universal reporting currently receives only Meta metrics. TikTok reporting and attribution reconciliation are pending.
 - The first beta has a three-week target. API approvals and live validation are external dependencies.

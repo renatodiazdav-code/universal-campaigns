@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import StartShopify from "../StartShopify";
 
 export default function LoginPage() {
   const [mode, setMode] = useState("login");
@@ -21,6 +22,9 @@ export default function LoginPage() {
       <header className="campaignHeader"><a className="logo" href="/">Relay</a></header>
       <section className="campaignContent">
         <h1 className="campaignTitle">{mode === "register" ? "Create your account" : "Sign in"}</h1>
+        <p className="campaignSubtitle">Started with Shopify? Enter your store to sign in again.</p>
+        <StartShopify />
+        <p className="reviewDescription">Or use your Relay email and password:</p>
         <form onSubmit={submit} className="formSection">
           {mode === "register" && <label className="field"><span>Name</span><input name="name" autoComplete="name" maxLength="100" required /></label>}
           <label className="field"><span>Email</span><input name="email" type="email" autoComplete="email" maxLength="254" required /></label>

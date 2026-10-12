@@ -252,6 +252,16 @@ button {
   font-weight: 600;
 }
 
+.shopifyStart { max-width: 430px; margin: 26px 0; }
+.shopifyStart button { background: #0755ed; width: 100%; }
+.shopifyStart button:disabled { opacity: .6; cursor: wait; }
+.shopifyMediaPicker { margin: 20px 0; }
+.shopifyMediaPicker p { color: #666; }
+.shopifyMediaGrid { display: flex; gap: 10px; overflow-x: auto; padding: 4px; }
+.shopifyMediaGrid button { width: 86px; height: 86px; flex: 0 0 86px; padding: 3px; background: white; border: 1px solid #ddd; border-radius: 10px; cursor: pointer; }
+.shopifyMediaGrid button.selected { border: 2px solid #0755ed; }
+.shopifyMediaGrid img { width: 100%; height: 100%; object-fit: cover; border-radius: 6px; }
+
 .platformGrid {
   display: grid;
   gap: 16px;

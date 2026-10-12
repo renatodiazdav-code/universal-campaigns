@@ -20,6 +20,7 @@ function roundMoney(value) {
 export default function NewCampaignPage() {
   const [products, setProducts] = useState([]);
   const [selectedProductId, setSelectedProductId] = useState(null);
+  const [selectedShopifyImageUrl, setSelectedShopifyImageUrl] = useState(null);
   const [step, setStep] = useState(1);
 
   const [platforms, setPlatforms] = useState({
@@ -197,6 +198,7 @@ export default function NewCampaignPage() {
   );
 
   const currency = selectedProduct?.currency || "PEN";
+  const productImageUrl = selectedShopifyImageUrl || selectedProduct?.imageUrl || null;
   const hasSelectedPlatform = platforms.meta || platforms.tiktok;
   const hasBothPlatforms = platforms.meta && platforms.tiktok;
   const canUploadMetaAsset = platforms.meta && metaSetup?.status === "READY";
@@ -280,8 +282,7 @@ export default function NewCampaignPage() {
 
   const creativeIsReady =
     (creativeType === "IMAGE" &&
-      imageUpload.status === "READY" &&
-      Boolean(imageUpload.imageHash)) ||
+      (Boolean(productImageUrl) || (imageUpload.status === "READY" && Boolean(imageUpload.imageHash)))) ||
     (creativeType === "VIDEO" &&
       videoUpload.status === "READY" &&
       Boolean(videoUpload.videoId));
@@ -315,7 +316,7 @@ export default function NewCampaignPage() {
         price: Number(selectedProduct.price),
         published: selectedProduct.published,
         currency: selectedProduct.currency,
-        imageUrl: selectedProduct.imageUrl,
+        imageUrl: productImageUrl,
         destinationUrl: selectedProduct.destinationUrl,
       },
 
@@ -347,7 +348,7 @@ export default function NewCampaignPage() {
         headline: creative.headline,
         callToAction: creative.callToAction,
         destinationUrl: creative.destinationUrl,
-        thumbnailUrl: selectedProduct.imageUrl,
+        thumbnailUrl: productImageUrl,
         ...(creativeType === "VIDEO" && videoUpload.videoId
           ? {
               platformAssets: {
@@ -840,7 +841,7 @@ export default function NewCampaignPage() {
                     type="button"
                     disabled={product.published === false}
                     className={`productCard ${selected ? "selected" : ""}`}
-                    onClick={() => setSelectedProductId(product.id)}
+                    onClick={() => { setSelectedProductId(product.id); setSelectedShopifyImageUrl(null); }}
                   >
                     {product.imageUrl && (
                       <img
@@ -860,7 +861,7 @@ export default function NewCampaignPage() {
             </div>
 
             <div className="campaignActions">
-              <a href="/" className="secondaryButton">Back</a>
+              <a href="/campaigns" className="secondaryButton">Back</a>
               <button
                 type="button"
                 disabled={!selectedProductId}
@@ -935,18 +936,12 @@ export default function NewCampaignPage() {
 
               <button
                 type="button"
+                disabled
                 className={`platformCard ${platforms.tiktok ? "selected" : ""}`}
-                onClick={() => {
-                  setPlatforms((current) => ({
-                    ...current,
-                    tiktok: !current.tiktok,
-                  }));
-                  setAllocationMode("AUTO");
-                }}
               >
                 <div>
                   <strong>TikTok</strong>
-                  <span>TikTok Ads</span>
+                  <span>Awaiting TikTok approval — not available to launch yet</span>
                 </div>
                 <div className="selectionIndicator">{platforms.tiktok ? "✓" : ""}</div>
               </button>
@@ -1249,6 +1244,20 @@ export default function NewCampaignPage() {
             <p className="scopeDescription">{scope === "universal" ? "Upload one creative and share its message across platforms." : "Customize the message for this platform. The uploaded image or video stays shared."}</p>
             <div className="formSection">
               <h2>Creative</h2>
+              {selectedProduct?.images?.length > 0 && creativeType === "IMAGE" && (
+                <div className="shopifyMediaPicker">
+                  <p>Choose an image from your Shopify product, or upload your own below.</p>
+                  <div className="shopifyMediaGrid">
+                    {selectedProduct.images.map((image) => (
+                      <button type="button" key={image.url} className={productImageUrl === image.url ? "selected" : ""}
+                        aria-label={`Use ${image.altText || "Shopify product image"}`}
+                        onClick={() => { setSelectedShopifyImageUrl(image.url); setImagePreviewUrl(null); setImageUpload({ status: "IDLE", imageHash: null, fileName: null, error: "" }); }}>
+                        <img src={image.url} alt={image.altText || selectedProduct.title} />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
               <div className="platformGrid">
                 <button
                   type="button"
@@ -1262,7 +1271,7 @@ export default function NewCampaignPage() {
                     <strong>Image</strong>
                     <span>
                       {canUploadMetaAsset
-                        ? "Upload an image for this ad"
+                        ? "Use a Shopify image or upload an image"
                         : "Select and connect Meta to upload an image"}
                     </span>
                   </div>
@@ -1362,6 +1371,8 @@ export default function NewCampaignPage() {
                     alt={imageUpload.fileName || "Uploaded creative"}
                     className="creativeImage"
                   />
+                ) : creativeType === "IMAGE" && productImageUrl ? (
+                  <img src={productImageUrl} alt={selectedProduct.title} className="creativeImage" />
                 ) : null}
                 <div className="creativePreviewContent">
                   <span className="creativeLabel">

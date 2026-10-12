@@ -4,17 +4,19 @@
 
 1. Run `npm run setup:local` if `.env.local` is not configured.
 2. Set `SHOPIFY_CLIENT_ID` and `SHOPIFY_CLIENT_SECRET` to the Relay Shopify app credentials in `.env.local`. These belong to Relay, not to individual merchants. Do not commit or send them in chat.
-3. For the existing development store, set `SHOPIFY_SHOP=luvixy` (or its `myshopify.com` address). Restart Relay, register/sign in, then use **Use configured Shopify test store** on `/campaigns`. This only appears locally and never in production.
+3. Configure Shopify's allowed redirect URL as the public HTTPS Relay origin plus `/api/shopify/onboarding/callback`. The landing-page sign-up starts OAuth before the Relay account exists. The older signed-in `/api/shopify/auth/*` routes remain available for existing accounts, with their own callback URL.
 4. Configure `read_products` access in the app. Relay currently requests only this scope; no customer, order or write access is requested.
 
-The Dev Dashboard screen in Shopify does not show a redirect-URL field for this same-organization development-store flow. It uses the app's client credentials. Do not search for that field to test `luvixy`.
+For an isolated local test store, `SHOPIFY_SHOP=luvixy` and the server-side development token endpoint can still be used by a signed-in tester; it is not exposed as merchant onboarding UI.
 
-Use the configured development store for the first live check. External merchant OAuth still needs the redirect URL configured through the Shopify app's public distribution/CLI configuration before opening Relay to other stores. Production uses an HTTPS callback.
+Live OAuth cannot be verified with a simulated Shopify provider. External merchant OAuth needs app distribution approval and its redirect URL configured through the Shopify app configuration before opening Relay to other stores.
 
 ## Implemented behavior
 
 | Endpoint | Behavior |
 |---|---|
+| POST `/api/shopify/onboarding/start` | Public same-origin `{shop}` request returns official Shopify authorization URL and sets a short-lived, HttpOnly browser nonce |
+| GET `/api/shopify/onboarding/callback` | Verifies Shopify HMAC, timestamp and one-use state tied to the browser/store; creates or finds the store-owned Relay account, stores encrypted tokens, issues a Relay session and redirects to `/campaigns` |
 | POST `/api/shopify/auth/start` | Requires a session and same-origin request; accepts `{shop}` and returns Shopify's authorization URL |
 | GET `/api/shopify/auth/callback` | Verifies Shopify HMAC, timestamp and a single-use nonce tied to the user/session/store; exchanges the code and redirects to `/campaigns` |
 | GET `/api/connections` | Returns store name, domain, currency and connection state; never returns credentials |

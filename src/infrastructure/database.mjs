@@ -38,6 +38,12 @@ export function openRelayDatabase(filePath = process.env.RELAY_DATABASE_PATH || 
       state_hash TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
       session_hash TEXT NOT NULL, shop TEXT NOT NULL, expires_at INTEGER NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS shopify_onboarding_states (
+      state_hash TEXT PRIMARY KEY, browser_hash TEXT NOT NULL, shop TEXT NOT NULL, expires_at INTEGER NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS shopify_identities (
+      shop TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE
+    );
     CREATE TABLE IF NOT EXISTS connection_refresh_locks (
       user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, provider TEXT NOT NULL,
       lease_id TEXT NOT NULL, expires_at INTEGER NOT NULL, PRIMARY KEY(user_id, provider)

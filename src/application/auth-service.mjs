@@ -57,7 +57,7 @@ export async function verifyPassword(password, storedHash) {
 }
 
 function publicUser(row) {
-  return row ? { id: row.id, email: row.email, name: row.name, createdAt: row.created_at } : null;
+  return row ? { id: row.id, email: /^shopify-[a-f0-9]{64}@relay\.invalid$/.test(row.email) ? null : row.email, name: row.name, createdAt: row.created_at } : null;
 }
 
 export function createAuthService({ db = getRelayDatabase(), now = Date.now } = {}) {
@@ -78,8 +78,10 @@ export function createAuthService({ db = getRelayDatabase(), now = Date.now } = 
     return token;
   }
   return {
+    createSession,
     async register({ email, name, password }) {
       email = normalizeEmail(email); validPassword(password);
+      if (email.endsWith("@relay.invalid")) throw new AuthError("Enter a valid email address.");
       name = typeof name === "string" ? name.trim() : "";
       if (!name || name.length > 100) throw new AuthError("Enter your name (up to 100 characters).");
       limit("register", 30);
