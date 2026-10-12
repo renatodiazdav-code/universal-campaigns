@@ -8,6 +8,11 @@ const BIDDING_STRATEGIES = new Set([
   "COST_CAP",
 ]);
 
+const ATTRIBUTION_MODES = new Set([
+  "AUTO",
+  "STANDARD",
+]);
+
 const PLACEMENT_MODES = new Set([
   "RECOMMENDED",
   "MANUAL",
@@ -193,6 +198,67 @@ function resolveMetaAudience(metaOverrides, audienceStrategy) {
   };
 }
 
+function resolveMetaAttribution(metaOverrides) {
+  const attributionInput = normalizeObject(
+    metaOverrides.attribution,
+    "Meta attribution"
+  );
+
+  const mode = String(
+    attributionInput.mode ?? "AUTO"
+  ).toUpperCase();
+
+  if (!ATTRIBUTION_MODES.has(mode)) {
+    throw new Error(`Unsupported Meta attribution mode: ${mode}`);
+  }
+
+  if (mode === "AUTO") {
+    return {
+      mode: "AUTO",
+      model: "STANDARD",
+      clickWindowDays: null,
+      viewWindowDays: null,
+      engagedViewWindowDays: null,
+    };
+  }
+
+  const clickWindowDays = Number(
+    attributionInput.clickWindowDays ?? 7
+  );
+  const viewWindowDays = Number(
+    attributionInput.viewWindowDays ?? 1
+  );
+  const engagedViewWindowDays = Number(
+    attributionInput.engagedViewWindowDays ?? 1
+  );
+
+  if (![1, 7].includes(clickWindowDays)) {
+    throw new Error(
+      "Meta click attribution window must be 1 or 7 days"
+    );
+  }
+
+  if (![0, 1].includes(viewWindowDays)) {
+    throw new Error(
+      "Meta view attribution window must be off or 1 day"
+    );
+  }
+
+  if (![0, 1].includes(engagedViewWindowDays)) {
+    throw new Error(
+      "Meta engaged-view attribution window must be off or 1 day"
+    );
+  }
+
+  return {
+    mode: "STANDARD",
+    model: "STANDARD",
+    clickWindowDays,
+    viewWindowDays,
+    engagedViewWindowDays,
+  };
+}
+
 function normalizePlacementPositions(value, label) {
   if (value == null) {
     return [];
@@ -367,6 +433,8 @@ export function resolveMetaAdvancedSettings(
           : "LOWEST_COST_WITHOUT_CAP",
       costCap,
     },
+
+    attribution: resolveMetaAttribution(metaOverrides),
 
     placements: resolveMetaPlacements(
       metaOverrides,
