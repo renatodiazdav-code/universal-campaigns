@@ -49,7 +49,6 @@ export default function NewCampaignPage() {
     destinationUrl: "",
   });
   const [creativeType, setCreativeType] = useState("IMAGE");
-  const [imageSource, setImageSource] = useState("SHOPIFY");
   const [imagePreviewUrl, setImagePreviewUrl] = useState(null);
   const [imageUpload, setImageUpload] = useState({
     status: "IDLE",
@@ -165,7 +164,6 @@ export default function NewCampaignPage() {
       destinationUrl: selectedProduct.destinationUrl || "",
     });
     setCreativeType("IMAGE");
-    setImageSource("SHOPIFY");
     setImagePreviewUrl(null);
     setImageUpload({
       status: "IDLE",
@@ -231,9 +229,8 @@ export default function NewCampaignPage() {
 
   const creativeIsReady =
     (creativeType === "IMAGE" &&
-      (imageSource === "SHOPIFY"
-        ? Boolean(selectedProduct?.imageUrl)
-        : imageUpload.status === "READY" && Boolean(imageUpload.imageHash))) ||
+      imageUpload.status === "READY" &&
+      Boolean(imageUpload.imageHash)) ||
     (creativeType === "VIDEO" &&
       videoUpload.status === "READY" &&
       Boolean(videoUpload.videoId));
@@ -305,9 +302,7 @@ export default function NewCampaignPage() {
                 },
               },
             }
-          : creativeType === "IMAGE" &&
-              imageSource === "UPLOAD" &&
-              imageUpload.imageHash
+          : creativeType === "IMAGE" && imageUpload.imageHash
             ? {
                 platformAssets: {
                   meta: {
@@ -1345,12 +1340,21 @@ export default function NewCampaignPage() {
               <div className="platformGrid">
                 <button
                   type="button"
+                  disabled={!canUploadMetaAsset}
                   className={`platformCard ${creativeType === "IMAGE" ? "selected" : ""}`}
-                  onClick={() => setCreativeType("IMAGE")}
+                  onClick={() => {
+                    if (canUploadMetaAsset) {
+                      setCreativeType("IMAGE");
+                    }
+                  }}
                 >
                   <div>
                     <strong>Image</strong>
-                    <span>Use the Shopify image or upload your own</span>
+                    <span>
+                      {canUploadMetaAsset
+                        ? "Upload an image for this ad"
+                        : "Select and connect Meta to upload an image"}
+                    </span>
                   </div>
                   <div className="selectionIndicator">
                     {creativeType === "IMAGE" ? "✓" : ""}
@@ -1384,50 +1388,36 @@ export default function NewCampaignPage() {
               {creativeType === "IMAGE" && (
                 <>
                   <label className="field">
-                    <span>Image source</span>
-                    <select
-                      value={imageSource}
-                      onChange={(event) => setImageSource(event.target.value)}
-                    >
-                      <option value="SHOPIFY">Shopify product image</option>
-                      <option value="UPLOAD" disabled={!canUploadMetaAsset}>
-                        Upload another image
-                      </option>
-                    </select>
+                    <span>Image file</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      disabled={
+                        !canUploadMetaAsset ||
+                        imageUpload.status === "UPLOADING"
+                      }
+                      onChange={(event) => {
+                        const file = event.target.files?.[0] ?? null;
+                        uploadCreativeImage(file);
+                      }}
+                    />
                   </label>
 
-                  {imageSource === "UPLOAD" && (
-                    <>
-                      <label className="field">
-                        <span>Image file</span>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          disabled={imageUpload.status === "UPLOADING"}
-                          onChange={(event) => {
-                            const file = event.target.files?.[0] ?? null;
-                            uploadCreativeImage(file);
-                          }}
-                        />
-                      </label>
+                  {imageUpload.status === "UPLOADING" && (
+                    <p className="reviewDescription">
+                      Uploading image to Meta...
+                    </p>
+                  )}
 
-                      {imageUpload.status === "UPLOADING" && (
-                        <p className="reviewDescription">
-                          Uploading image to Meta...
-                        </p>
-                      )}
+                  {imageUpload.status === "READY" && (
+                    <p className="reviewDescription">
+                      ✓ {imageUpload.fileName || "Image"} is ready. Relay will
+                      reuse this Meta image asset when the campaign is created.
+                    </p>
+                  )}
 
-                      {imageUpload.status === "READY" && (
-                        <p className="reviewDescription">
-                          ✓ {imageUpload.fileName || "Image"} is ready. Relay will
-                          reuse this Meta image asset when the campaign is created.
-                        </p>
-                      )}
-
-                      {imageUpload.status === "ERROR" && (
-                        <p className="errorText">{imageUpload.error}</p>
-                      )}
-                    </>
+                  {imageUpload.status === "ERROR" && (
+                    <p className="errorText">{imageUpload.error}</p>
                   )}
                 </>
               )}
@@ -1477,18 +1467,10 @@ export default function NewCampaignPage() {
                     muted
                     playsInline
                   />
-                ) : creativeType === "IMAGE" &&
-                  imageSource === "UPLOAD" &&
-                  imagePreviewUrl ? (
+                ) : creativeType === "IMAGE" && imagePreviewUrl ? (
                   <img
                     src={imagePreviewUrl}
                     alt={imageUpload.fileName || "Uploaded creative"}
-                    className="creativeImage"
-                  />
-                ) : selectedProduct.imageUrl ? (
-                  <img
-                    src={selectedProduct.imageUrl}
-                    alt={selectedProduct.title}
                     className="creativeImage"
                   />
                 ) : null}
@@ -1601,9 +1583,7 @@ export default function NewCampaignPage() {
                 <strong>
                   {creativeType === "VIDEO"
                     ? `Video${videoUpload.fileName ? ` · ${videoUpload.fileName}` : ""}`
-                    : imageSource === "UPLOAD"
-                      ? `Image${imageUpload.fileName ? ` · ${imageUpload.fileName}` : ""}`
-                      : "Image · Shopify product image"}
+                    : `Image${imageUpload.fileName ? ` · ${imageUpload.fileName}` : ""}`}
                 </strong>
               </div>
 
