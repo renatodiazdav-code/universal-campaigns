@@ -20,6 +20,28 @@ function humanizeType(type) {
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
+function AdvancedSection({ title, summary, children }) {
+  return (
+    <details className="reviewSection">
+      <summary
+        style={{
+          cursor: "pointer",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          gap: 16,
+        }}
+      >
+        <strong style={{ fontSize: 18 }}>{title}</strong>
+        <span className="reviewDescription" style={{ margin: 0 }}>
+          {summary}
+        </span>
+      </summary>
+      <div style={{ marginTop: 18 }}>{children}</div>
+    </details>
+  );
+}
+
 function PlacementCheckboxes({
   label,
   field,
@@ -90,6 +112,24 @@ function SelectedItems({ items, emptyText, onRemove, describe }) {
       ))}
     </div>
   );
+}
+
+function attributionSummary(metaAdvanced) {
+  if (metaAdvanced.attributionMode !== "STANDARD") {
+    return "Automatic by Relay";
+  }
+
+  const parts = [
+    `${metaAdvanced.clickAttributionDays || "7"}d click`,
+    metaAdvanced.viewAttributionDays === "0"
+      ? "view off"
+      : "1d view",
+    metaAdvanced.engagedViewAttributionDays === "0"
+      ? "engaged-view off"
+      : "1d engaged-view",
+  ];
+
+  return `Standard · ${parts.join(" · ")}`;
 }
 
 export default function MetaAdvancedSettings({
@@ -310,18 +350,42 @@ export default function MetaAdvancedSettings({
     }
   }
 
+  const budgetSummary = !hasBothPlatforms
+    ? "Full budget to the selected platform"
+    : allocationMode === "AUTO"
+      ? "Automatic by Relay"
+      : "Manual distribution";
+
+  const audienceSummary =
+    metaAdvanced.audienceStrategy === "ADVANTAGE_PLUS"
+      ? "Advantage+ audience"
+      : "Specific audience";
+
+  const biddingSummary =
+    metaAdvanced.biddingStrategy === "COST_CAP"
+      ? `Cost per result goal · ${currency} ${Number(metaAdvanced.costCap || 0).toFixed(2)}`
+      : "Highest volume";
+
+  const placementsSummary =
+    metaAdvanced.placementsMode === "RECOMMENDED"
+      ? "Relay recommended"
+      : "Manual placements";
+
   return (
     <div className="advancedPanel">
       <div className="advancedPanelHeader">
         <div>
           <span className="creativeLabel">ADVANCED SETTINGS</span>
           <h2>Campaign controls</h2>
+          <p className="reviewDescription">
+            Relay keeps recommended defaults until you open a section and change
+            something. Professional controls stay available without cluttering
+            the basic campaign flow.
+          </p>
         </div>
       </div>
 
-      <div className="reviewSection">
-        <h2>Budget distribution</h2>
-
+      <AdvancedSection title="Budget distribution" summary={budgetSummary}>
         {hasBothPlatforms ? (
           <>
             <label className="field">
@@ -387,13 +451,11 @@ export default function MetaAdvancedSettings({
             budget automatically.
           </p>
         )}
-      </div>
+      </AdvancedSection>
 
       {metaEnabled && (
         <>
-          <div className="reviewSection">
-            <h2>Meta audience</h2>
-
+          <AdvancedSection title="Audience" summary={audienceSummary}>
             <label className="field">
               <span>Audience delivery</span>
               <select
@@ -417,118 +479,123 @@ export default function MetaAdvancedSettings({
             {metaAdvanced.audienceStrategy === "ADVANTAGE_PLUS" ? (
               <p className="reviewDescription">
                 Meta can go beyond audience suggestions to find more purchasers.
-                Your location, minimum age and excluded audiences remain controls.
+                Location, minimum age and excluded audiences remain controls.
                 Maximum age, gender, included audiences, lookalikes and detailed
-                targeting are suggestions for this Sales/Purchase campaign.
+                targeting can act as suggestions for this Sales/Purchase campaign.
               </p>
             ) : (
               <p className="reviewDescription">
                 Relay switches off Advantage+ audience delivery. Your age range,
                 gender and included Custom Audiences can be used as restrictions.
-                For Sales/Purchase, Meta still expands Lookalike Audiences and
-                detailed targeting, so those remain suggestions rather than hard
-                limits.
+                For Sales/Purchase, Lookalikes and detailed targeting may still be
+                expanded by Meta rather than acting as absolute limits.
               </p>
             )}
 
-            <div className="field" style={{ marginTop: 18 }}>
-              <span>Existing audiences to include (optional)</span>
-              <input
-                type="search"
-                value={includedSearch}
-                onChange={(event) => setIncludedSearch(event.target.value)}
-                placeholder="Search existing Custom or Lookalike Audiences..."
-              />
+            {audiencesLoading && (
+              <p className="reviewDescription">Checking existing Meta audiences...</p>
+            )}
+            {audiencesError && (
+              <p className="errorText">{audiencesError}</p>
+            )}
 
-              {audiencesLoading && (
-                <p className="reviewDescription">Loading audiences from Meta...</p>
+            {!audiencesLoading &&
+              !audiencesError &&
+              existingAudiences.length > 0 && (
+                <>
+                  <div className="field" style={{ marginTop: 18 }}>
+                    <span>Existing audiences to include (optional)</span>
+                    <input
+                      type="search"
+                      value={includedSearch}
+                      onChange={(event) => setIncludedSearch(event.target.value)}
+                      placeholder="Search existing Custom or Lookalike Audiences..."
+                    />
+
+                    {includedSearch.trim() && (
+                      <div style={{ display: "grid", gap: 8, marginTop: 10 }}>
+                        {includedResults.length === 0 ? (
+                          <p className="reviewDescription">
+                            No existing Meta audience matches that search.
+                          </p>
+                        ) : (
+                          includedResults.map((audience) => (
+                            <button
+                              key={`include-${audience.id}`}
+                              type="button"
+                              className="stepBackButton"
+                              onClick={() => {
+                                selectExistingAudience("includedAudiences", audience);
+                                setIncludedSearch("");
+                              }}
+                              style={{ textAlign: "left" }}
+                            >
+                              {audience.name} · {audience.kind === "LOOKALIKE" ? "Lookalike" : "Custom Audience"}
+                            </button>
+                          ))
+                        )}
+                      </div>
+                    )}
+
+                    <SelectedItems
+                      items={metaAdvanced.includedAudiences ?? []}
+                      emptyText="No existing audiences selected."
+                      onRemove={(audience) =>
+                        removeExistingAudience("includedAudiences", audience)
+                      }
+                      describe={(audience) =>
+                        audience.kind === "LOOKALIKE"
+                          ? "Lookalike Audience"
+                          : "Custom Audience"
+                      }
+                    />
+                  </div>
+
+                  <div className="field" style={{ marginTop: 18 }}>
+                    <span>Excluded audiences (optional)</span>
+                    <input
+                      type="search"
+                      value={excludedSearch}
+                      onChange={(event) => setExcludedSearch(event.target.value)}
+                      placeholder="Search existing audiences to exclude..."
+                    />
+
+                    {excludedSearch.trim() && (
+                      <div style={{ display: "grid", gap: 8, marginTop: 10 }}>
+                        {excludedResults.length === 0 ? (
+                          <p className="reviewDescription">
+                            No existing Meta audience matches that search.
+                          </p>
+                        ) : (
+                          excludedResults.map((audience) => (
+                            <button
+                              key={`exclude-${audience.id}`}
+                              type="button"
+                              className="stepBackButton"
+                              onClick={() => {
+                                selectExistingAudience("excludedAudiences", audience);
+                                setExcludedSearch("");
+                              }}
+                              style={{ textAlign: "left" }}
+                            >
+                              {audience.name} · {audience.kind === "LOOKALIKE" ? "Lookalike" : "Custom Audience"}
+                            </button>
+                          ))
+                        )}
+                      </div>
+                    )}
+
+                    <SelectedItems
+                      items={metaAdvanced.excludedAudiences ?? []}
+                      emptyText="No audiences excluded."
+                      onRemove={(audience) =>
+                        removeExistingAudience("excludedAudiences", audience)
+                      }
+                      describe={() => "Audience control"}
+                    />
+                  </div>
+                </>
               )}
-              {audiencesError && (
-                <p className="errorText">{audiencesError}</p>
-              )}
-
-              {includedSearch.trim() && !audiencesLoading && !audiencesError && (
-                <div style={{ display: "grid", gap: 8, marginTop: 10 }}>
-                  {includedResults.length === 0 ? (
-                    <p className="reviewDescription">
-                      No existing Meta audience matches that search.
-                    </p>
-                  ) : (
-                    includedResults.map((audience) => (
-                      <button
-                        key={`include-${audience.id}`}
-                        type="button"
-                        className="stepBackButton"
-                        onClick={() => {
-                          selectExistingAudience("includedAudiences", audience);
-                          setIncludedSearch("");
-                        }}
-                        style={{ textAlign: "left" }}
-                      >
-                        {audience.name} · {audience.kind === "LOOKALIKE" ? "Lookalike" : "Custom Audience"}
-                      </button>
-                    ))
-                  )}
-                </div>
-              )}
-
-              <SelectedItems
-                items={metaAdvanced.includedAudiences ?? []}
-                emptyText="No existing audiences selected."
-                onRemove={(audience) =>
-                  removeExistingAudience("includedAudiences", audience)
-                }
-                describe={(audience) =>
-                  audience.kind === "LOOKALIKE"
-                    ? "Lookalike Audience"
-                    : "Custom Audience"
-                }
-              />
-            </div>
-
-            <div className="field" style={{ marginTop: 18 }}>
-              <span>Excluded audiences (optional)</span>
-              <input
-                type="search"
-                value={excludedSearch}
-                onChange={(event) => setExcludedSearch(event.target.value)}
-                placeholder="Search existing audiences to exclude..."
-              />
-
-              {excludedSearch.trim() && !audiencesLoading && !audiencesError && (
-                <div style={{ display: "grid", gap: 8, marginTop: 10 }}>
-                  {excludedResults.length === 0 ? (
-                    <p className="reviewDescription">
-                      No existing Meta audience matches that search.
-                    </p>
-                  ) : (
-                    excludedResults.map((audience) => (
-                      <button
-                        key={`exclude-${audience.id}`}
-                        type="button"
-                        className="stepBackButton"
-                        onClick={() => {
-                          selectExistingAudience("excludedAudiences", audience);
-                          setExcludedSearch("");
-                        }}
-                        style={{ textAlign: "left" }}
-                      >
-                        {audience.name} · {audience.kind === "LOOKALIKE" ? "Lookalike" : "Custom Audience"}
-                      </button>
-                    ))
-                  )}
-                </div>
-              )}
-
-              <SelectedItems
-                items={metaAdvanced.excludedAudiences ?? []}
-                emptyText="No audiences excluded."
-                onRemove={(audience) =>
-                  removeExistingAudience("excludedAudiences", audience)
-                }
-                describe={() => "Audience control"}
-              />
-            </div>
 
             <div className="field" style={{ marginTop: 18 }}>
               <span>Detailed targeting (optional)</span>
@@ -592,15 +659,13 @@ export default function MetaAdvancedSettings({
                 emptyText="No detailed targeting selected."
                 onRemove={removeDetailedTargeting}
                 describe={(option) =>
-                  `${humanizeType(option.type)} · suggestion for Sales/Purchase`
+                  `${humanizeType(option.type)} · audience signal for Sales/Purchase`
                 }
               />
             </div>
-          </div>
+          </AdvancedSection>
 
-          <div className="reviewSection">
-            <h2>Meta bidding</h2>
-
+          <AdvancedSection title="Bidding & value" summary={biddingSummary}>
             <label className="field">
               <span>Bidding strategy</span>
               <select
@@ -612,8 +677,8 @@ export default function MetaAdvancedSettings({
                   }))
                 }
               >
-                <option value="LOWEST_COST">Lowest cost (Recommended)</option>
-                <option value="COST_CAP">Cost cap</option>
+                <option value="LOWEST_COST">Highest volume (Recommended)</option>
+                <option value="COST_CAP">Cost per result goal</option>
               </select>
             </label>
 
@@ -635,11 +700,95 @@ export default function MetaAdvancedSettings({
                 />
               </label>
             )}
-          </div>
+          </AdvancedSection>
 
-          <div className="reviewSection">
-            <h2>Meta placements</h2>
+          <AdvancedSection
+            title="Attribution"
+            summary={attributionSummary(metaAdvanced)}
+          >
+            <label className="field">
+              <span>Attribution settings</span>
+              <select
+                value={metaAdvanced.attributionMode ?? "AUTO"}
+                onChange={(event) =>
+                  setMetaAdvanced((current) => ({
+                    ...current,
+                    attributionMode: event.target.value,
+                  }))
+                }
+              >
+                <option value="AUTO">Automatic by Relay (Recommended)</option>
+                <option value="STANDARD">Customize Standard attribution</option>
+              </select>
+            </label>
 
+            {metaAdvanced.attributionMode !== "STANDARD" ? (
+              <p className="reviewDescription">
+                Relay leaves the Standard attribution windows on Meta's compatible
+                default for this Sales/Website/Purchase campaign.
+              </p>
+            ) : (
+              <>
+                <div className="reviewRow">
+                  <span>Model</span>
+                  <strong>Standard</strong>
+                </div>
+
+                <label className="field">
+                  <span>Click-through</span>
+                  <select
+                    value={metaAdvanced.clickAttributionDays ?? "7"}
+                    onChange={(event) =>
+                      setMetaAdvanced((current) => ({
+                        ...current,
+                        clickAttributionDays: event.target.value,
+                      }))
+                    }
+                  >
+                    <option value="7">7 days</option>
+                    <option value="1">1 day</option>
+                  </select>
+                </label>
+
+                <label className="field">
+                  <span>Engaged-view</span>
+                  <select
+                    value={metaAdvanced.engagedViewAttributionDays ?? "1"}
+                    onChange={(event) =>
+                      setMetaAdvanced((current) => ({
+                        ...current,
+                        engagedViewAttributionDays: event.target.value,
+                      }))
+                    }
+                  >
+                    <option value="1">1 day</option>
+                    <option value="0">Off</option>
+                  </select>
+                </label>
+                <p className="reviewDescription">
+                  Engaged-view is only sent when the ad creative is a video.
+                </p>
+
+                <label className="field">
+                  <span>View-through</span>
+                  <select
+                    value={metaAdvanced.viewAttributionDays ?? "1"}
+                    onChange={(event) =>
+                      setMetaAdvanced((current) => ({
+                        ...current,
+                        viewAttributionDays: event.target.value,
+                      }))
+                    }
+                  >
+                    <option value="1">1 day</option>
+                    <option value="0">Off</option>
+                  </select>
+                </label>
+              </>
+            )}
+          </AdvancedSection>
+
+          <AdvancedSection title="Placements" summary={placementsSummary}>
             <label className="field">
               <span>Placements</span>
               <select
@@ -682,7 +831,7 @@ export default function MetaAdvancedSettings({
                 )}
               </>
             )}
-          </div>
+          </AdvancedSection>
 
           {!validation.valid && (
             <p className="errorText">{validation.error}</p>
