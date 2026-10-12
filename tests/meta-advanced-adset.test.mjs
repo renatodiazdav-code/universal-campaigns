@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import {
   buildMetaAudienceTargeting,
   createAdvancedMetaAdSet,
+  normalizeMetaAttributionSpec,
 } from "../src/connectors/meta/advanced-adset.mjs";
 
 function jsonResponse(body, { ok = true } = {}) {
@@ -117,9 +118,39 @@ test("specific audience delivery restricts Custom Audiences but keeps Lookalikes
   });
 });
 
-test("creates a campaign-budget Meta ad set with audience targeting and Purchase optimization", async () => {
+test("normalizes supported Meta attribution windows", () => {
+  assert.deepEqual(
+    normalizeMetaAttributionSpec([
+      { event_type: "CLICK_THROUGH", window_days: 7 },
+      { event_type: "VIEW_THROUGH", window_days: 1 },
+      { event_type: "ENGAGED_VIDEO_VIEW", window_days: 1 },
+    ]),
+    [
+      { event_type: "CLICK_THROUGH", window_days: 7 },
+      { event_type: "VIEW_THROUGH", window_days: 1 },
+      { event_type: "ENGAGED_VIDEO_VIEW", window_days: 1 },
+    ]
+  );
+});
+
+test("rejects unsupported Meta attribution windows", () => {
+  assert.throws(
+    () =>
+      normalizeMetaAttributionSpec([
+        { event_type: "CLICK_THROUGH", window_days: 28 },
+      ]),
+    /Unsupported Meta attribution window/
+  );
+});
+
+test("creates a campaign-budget Meta ad set with audience targeting Purchase optimization and attribution", async () => {
   let capturedUrl = null;
   let capturedBody = null;
+
+  const attributionSpec = [
+    { event_type: "CLICK_THROUGH", window_days: 7 },
+    { event_type: "VIEW_THROUGH", window_days: 1 },
+  ];
 
   const result = await createAdvancedMetaAdSet({
     adAccountId: "act_123",
@@ -148,6 +179,7 @@ test("creates a campaign-budget Meta ad set with audience targeting and Purchase
     ],
     publisherPlatforms: ["FACEBOOK"],
     facebookPositions: ["FEED"],
+    attributionSpec,
     optimizationGoal: "OFFSITE_CONVERSIONS",
     bidAmount: 1750,
     pixelId: "pixel-1",
@@ -172,6 +204,10 @@ test("creates a campaign-budget Meta ad set with audience targeting and Purchase
     pixel_id: "pixel-1",
     custom_event_type: "PURCHASE",
   });
+  assert.deepEqual(
+    JSON.parse(capturedBody.get("attribution_spec")),
+    attributionSpec
+  );
 
   const targeting = JSON.parse(capturedBody.get("targeting"));
   assert.deepEqual(targeting.custom_audiences, [{ id: "ca-1" }]);
