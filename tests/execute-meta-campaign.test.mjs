@@ -164,8 +164,11 @@ test("executes a TOTAL Universal Campaign with Meta campaign lifetime budget", a
   );
   assert.equal(calls[1].input.gender, "ALL");
   assert.equal(calls[1].input.advantageAudience, true);
-  assert.equal(calls[1].input.allowAgeExpansion, false);
-  assert.equal(calls[1].input.allowGenderExpansion, false);
+  assert.equal(calls[1].input.allowAgeExpansion, true);
+  assert.equal(calls[1].input.allowGenderExpansion, true);
+  assert.deepEqual(calls[1].input.includedAudiences, []);
+  assert.deepEqual(calls[1].input.excludedAudiences, []);
+  assert.deepEqual(calls[1].input.detailedTargeting, []);
   assert.equal(calls[1].input.bidAmount, null);
   assert.deepEqual(
     calls[1].input.publisherPlatforms,
@@ -199,6 +202,10 @@ test("executes a TOTAL Universal Campaign with Meta campaign lifetime budget", a
     result.configuration.audience.strategy,
     "ADVANTAGE_PLUS"
   );
+  assert.equal(result.configuration.audience.mode, "ADVANTAGE_PLUS");
+  assert.deepEqual(result.configuration.audience.includedAudiences, []);
+  assert.deepEqual(result.configuration.audience.excludedAudiences, []);
+  assert.deepEqual(result.configuration.audience.detailedTargeting, []);
   assert.equal(
     result.configuration.bidding.strategy,
     "LOWEST_COST"
@@ -326,14 +333,95 @@ test("executes Meta Cost Cap override while keeping campaign budget", async () =
   assert.equal(calls[0].input.bidStrategy, "COST_CAP");
   assert.equal(calls[1].input.bidAmount, 1250);
   assert.equal(calls[1].input.advantageAudience, false);
+  assert.equal(calls[1].input.allowAgeExpansion, false);
+  assert.equal(calls[1].input.allowGenderExpansion, false);
 
   assert.equal(
     result.configuration.audience.strategy,
     "MANUAL"
   );
+  assert.equal(result.configuration.audience.mode, "SPECIFIC");
   assert.equal(result.configuration.bidding.strategy, "COST_CAP");
   assert.equal(result.configuration.bidding.costCap, 12.5);
   assert.equal(result.configuration.bidding.bidAmount, 1250);
+});
+
+test("passes selected Custom Audiences, exclusions and detailed targeting into the Meta ad set", async () => {
+  const input = createInput({
+    amount: 50,
+    meta: 50,
+    tiktok: 0,
+  });
+
+  input.overrides = {
+    meta: {
+      audienceStrategy: "ADVANTAGE_PLUS",
+      audience: {
+        mode: "ADVANTAGE_PLUS",
+        includedAudiences: [
+          {
+            id: "ca-1",
+            name: "Website visitors",
+            subtype: "WEBSITE",
+            kind: "CUSTOM",
+          },
+          {
+            id: "la-1",
+            name: "Lookalike customers",
+            subtype: "LOOKALIKE",
+            kind: "LOOKALIKE",
+          },
+        ],
+        excludedAudiences: [
+          {
+            id: "ca-2",
+            name: "Purchasers",
+            subtype: "WEBSITE",
+            kind: "CUSTOM",
+          },
+        ],
+        detailedTargeting: [
+          {
+            id: "interest-1",
+            name: "Running",
+            type: "interests",
+          },
+        ],
+      },
+    },
+  };
+
+  const campaign = createUniversalCampaign(input);
+  const calls = [];
+
+  const result = await executeMetaCampaign({
+    campaign,
+    connection: createConnection(),
+    metaClient: createFakeMeta(calls),
+    now: new Date("2026-10-10T12:00:00.000Z"),
+  });
+
+  assert.equal(result.status, "CREATED");
+  assert.deepEqual(
+    calls[1].input.includedAudiences.map((item) => item.id),
+    ["ca-1", "la-1"]
+  );
+  assert.deepEqual(
+    calls[1].input.excludedAudiences.map((item) => item.id),
+    ["ca-2"]
+  );
+  assert.deepEqual(calls[1].input.detailedTargeting, [
+    {
+      id: "interest-1",
+      name: "Running",
+      type: "interests",
+      path: [],
+    },
+  ]);
+  assert.deepEqual(
+    result.configuration.audience.includedAudiences.map((item) => item.id),
+    ["ca-1", "la-1"]
+  );
 });
 
 test("executes manual Facebook and Instagram placement subsets", async () => {
