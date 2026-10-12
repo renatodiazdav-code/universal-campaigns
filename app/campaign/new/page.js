@@ -49,6 +49,14 @@ export default function NewCampaignPage() {
     destinationUrl: "",
   });
   const [creativeType, setCreativeType] = useState("IMAGE");
+  const [imageSource, setImageSource] = useState("SHOPIFY");
+  const [imagePreviewUrl, setImagePreviewUrl] = useState(null);
+  const [imageUpload, setImageUpload] = useState({
+    status: "IDLE",
+    imageHash: null,
+    fileName: null,
+    error: "",
+  });
   const [videoPreviewUrl, setVideoPreviewUrl] = useState(null);
   const [videoUpload, setVideoUpload] = useState({
     status: "IDLE",
@@ -120,6 +128,14 @@ export default function NewCampaignPage() {
 
   useEffect(() => {
     return () => {
+      if (imagePreviewUrl) {
+        URL.revokeObjectURL(imagePreviewUrl);
+      }
+    };
+  }, [imagePreviewUrl]);
+
+  useEffect(() => {
+    return () => {
       if (videoPreviewUrl) {
         URL.revokeObjectURL(videoPreviewUrl);
       }
@@ -135,7 +151,7 @@ export default function NewCampaignPage() {
   const currency = selectedProduct?.currency || "PEN";
   const hasSelectedPlatform = platforms.meta || platforms.tiktok;
   const hasBothPlatforms = platforms.meta && platforms.tiktok;
-  const canUploadMetaVideo =
+  const canUploadMetaAsset =
     platforms.meta && metaSetup?.status === "READY";
 
   useEffect(() => {
@@ -149,6 +165,14 @@ export default function NewCampaignPage() {
       destinationUrl: selectedProduct.destinationUrl || "",
     });
     setCreativeType("IMAGE");
+    setImageSource("SHOPIFY");
+    setImagePreviewUrl(null);
+    setImageUpload({
+      status: "IDLE",
+      imageHash: null,
+      fileName: null,
+      error: "",
+    });
     setVideoPreviewUrl(null);
     setVideoUpload({
       status: "IDLE",
@@ -206,8 +230,13 @@ export default function NewCampaignPage() {
     hasSelectedPlatform;
 
   const creativeIsReady =
-    creativeType === "IMAGE" ||
-    (videoUpload.status === "READY" && Boolean(videoUpload.videoId));
+    (creativeType === "IMAGE" &&
+      (imageSource === "SHOPIFY"
+        ? Boolean(selectedProduct?.imageUrl)
+        : imageUpload.status === "READY" && Boolean(imageUpload.imageHash))) ||
+    (creativeType === "VIDEO" &&
+      videoUpload.status === "READY" &&
+      Boolean(videoUpload.videoId));
 
   function buildPlatformsInput() {
     return {
@@ -276,7 +305,17 @@ export default function NewCampaignPage() {
                 },
               },
             }
-          : {}),
+          : creativeType === "IMAGE" &&
+              imageSource === "UPLOAD" &&
+              imageUpload.imageHash
+            ? {
+                platformAssets: {
+                  meta: {
+                    imageHash: imageUpload.imageHash,
+                  },
+                },
+              }
+            : {}),
       },
     };
   }
@@ -477,12 +516,80 @@ export default function NewCampaignPage() {
     setAllocationMode(nextMode);
   }
 
+  async function uploadCreativeImage(file) {
+    if (!file) {
+      return;
+    }
+
+    if (!canUploadMetaAsset) {
+      setImageUpload({
+        status: "ERROR",
+        imageHash: null,
+        fileName: file.name || null,
+        error: "Connect and select Meta before uploading an image.",
+      });
+      return;
+    }
+
+    if (
+      file.type &&
+      !String(file.type).toLowerCase().startsWith("image/")
+    ) {
+      setImageUpload({
+        status: "ERROR",
+        imageHash: null,
+        fileName: file.name || null,
+        error: "Choose an image file.",
+      });
+      return;
+    }
+
+    const nextPreviewUrl = URL.createObjectURL(file);
+    setImagePreviewUrl(nextPreviewUrl);
+    setImageUpload({
+      status: "UPLOADING",
+      imageHash: null,
+      fileName: file.name || null,
+      error: "",
+    });
+
+    try {
+      const formData = new FormData();
+      formData.append("image", file);
+
+      const response = await fetch("/api/meta/images/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.imageHash) {
+        throw new Error(data.error || "Could not upload image to Meta");
+      }
+
+      setImageUpload({
+        status: "READY",
+        imageHash: String(data.imageHash),
+        fileName: data.fileName || file.name || null,
+        error: "",
+      });
+    } catch (error) {
+      setImageUpload({
+        status: "ERROR",
+        imageHash: null,
+        fileName: file.name || null,
+        error: error.message,
+      });
+    }
+  }
+
   async function uploadCreativeVideo(file) {
     if (!file) {
       return;
     }
 
-    if (!canUploadMetaVideo) {
+    if (!canUploadMetaAsset) {
       setVideoUpload({
         status: "ERROR",
         videoId: null,
@@ -1243,7 +1350,7 @@ export default function NewCampaignPage() {
                 >
                   <div>
                     <strong>Image</strong>
-                    <span>Use the Shopify product image</span>
+                    <span>Use the Shopify image or upload your own</span>
                   </div>
                   <div className="selectionIndicator">
                     {creativeType === "IMAGE" ? "✓" : ""}
@@ -1252,10 +1359,10 @@ export default function NewCampaignPage() {
 
                 <button
                   type="button"
-                  disabled={!canUploadMetaVideo}
+                  disabled={!canUploadMetaAsset}
                   className={`platformCard ${creativeType === "VIDEO" ? "selected" : ""}`}
                   onClick={() => {
-                    if (canUploadMetaVideo) {
+                    if (canUploadMetaAsset) {
                       setCreativeType("VIDEO");
                     }
                   }}
@@ -1263,7 +1370,7 @@ export default function NewCampaignPage() {
                   <div>
                     <strong>Video</strong>
                     <span>
-                      {canUploadMetaVideo
+                      {canUploadMetaAsset
                         ? "Upload one video and Relay handles Meta"
                         : "Select and connect Meta to upload video"}
                     </span>
@@ -1273,6 +1380,57 @@ export default function NewCampaignPage() {
                   </div>
                 </button>
               </div>
+
+              {creativeType === "IMAGE" && (
+                <>
+                  <label className="field">
+                    <span>Image source</span>
+                    <select
+                      value={imageSource}
+                      onChange={(event) => setImageSource(event.target.value)}
+                    >
+                      <option value="SHOPIFY">Shopify product image</option>
+                      <option value="UPLOAD" disabled={!canUploadMetaAsset}>
+                        Upload another image
+                      </option>
+                    </select>
+                  </label>
+
+                  {imageSource === "UPLOAD" && (
+                    <>
+                      <label className="field">
+                        <span>Image file</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          disabled={imageUpload.status === "UPLOADING"}
+                          onChange={(event) => {
+                            const file = event.target.files?.[0] ?? null;
+                            uploadCreativeImage(file);
+                          }}
+                        />
+                      </label>
+
+                      {imageUpload.status === "UPLOADING" && (
+                        <p className="reviewDescription">
+                          Uploading image to Meta...
+                        </p>
+                      )}
+
+                      {imageUpload.status === "READY" && (
+                        <p className="reviewDescription">
+                          ✓ {imageUpload.fileName || "Image"} is ready. Relay will
+                          reuse this Meta image asset when the campaign is created.
+                        </p>
+                      )}
+
+                      {imageUpload.status === "ERROR" && (
+                        <p className="errorText">{imageUpload.error}</p>
+                      )}
+                    </>
+                  )}
+                </>
+              )}
 
               {creativeType === "VIDEO" && (
                 <>
@@ -1318,6 +1476,14 @@ export default function NewCampaignPage() {
                     controls
                     muted
                     playsInline
+                  />
+                ) : creativeType === "IMAGE" &&
+                  imageSource === "UPLOAD" &&
+                  imagePreviewUrl ? (
+                  <img
+                    src={imagePreviewUrl}
+                    alt={imageUpload.fileName || "Uploaded creative"}
+                    className="creativeImage"
                   />
                 ) : selectedProduct.imageUrl ? (
                   <img
@@ -1397,10 +1563,15 @@ export default function NewCampaignPage() {
               <button
                 type="button"
                 className="continueButton"
-                disabled={!creativeIsReady || videoUpload.status === "UPLOADING"}
+                disabled={
+                  !creativeIsReady ||
+                  imageUpload.status === "UPLOADING" ||
+                  videoUpload.status === "UPLOADING"
+                }
                 onClick={() => setStep(5)}
               >
-                {videoUpload.status === "UPLOADING"
+                {imageUpload.status === "UPLOADING" ||
+                videoUpload.status === "UPLOADING"
                   ? "Uploading..."
                   : "Continue"}
               </button>
@@ -1430,7 +1601,9 @@ export default function NewCampaignPage() {
                 <strong>
                   {creativeType === "VIDEO"
                     ? `Video${videoUpload.fileName ? ` · ${videoUpload.fileName}` : ""}`
-                    : "Image"}
+                    : imageSource === "UPLOAD"
+                      ? `Image${imageUpload.fileName ? ` · ${imageUpload.fileName}` : ""}`
+                      : "Image · Shopify product image"}
                 </strong>
               </div>
 
