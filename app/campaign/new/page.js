@@ -1,6 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import MetaAdvancedSettings from "./MetaAdvancedSettings";
+import {
+  buildMetaOverridesFromForm,
+  createDefaultMetaAdvancedForm,
+  resolveEffectiveMetaPublishers,
+  validateMetaAdvancedForm,
+} from "../../../src/application/meta-advanced-form.mjs";
 
 function roundMoney(value) {
   return Math.round((Number(value) + Number.EPSILON) * 100) / 100;
@@ -35,6 +42,10 @@ export default function NewCampaignPage() {
 
   const [allocationMode, setAllocationMode] = useState("AUTO");
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [metaAdvanced, setMetaAdvanced] = useState(() =>
+    createDefaultMetaAdvancedForm()
+  );
+
   const [autoAllocation, setAutoAllocation] = useState(null);
   const [autoAllocationLoading, setAutoAllocationLoading] = useState(false);
   const [autoAllocationError, setAutoAllocationError] = useState("");
@@ -82,7 +93,6 @@ export default function NewCampaignPage() {
       try {
         const response = await fetch("/api/meta/setup");
         const data = await response.json();
-
         setMetaSetup(data);
 
         if (data.status !== "READY") {
@@ -150,8 +160,18 @@ export default function NewCampaignPage() {
   const currency = selectedProduct?.currency || "PEN";
   const hasSelectedPlatform = platforms.meta || platforms.tiktok;
   const hasBothPlatforms = platforms.meta && platforms.tiktok;
-  const canUploadMetaAsset =
-    platforms.meta && metaSetup?.status === "READY";
+  const canUploadMetaAsset = platforms.meta && metaSetup?.status === "READY";
+
+  const effectiveMetaPublishers = resolveEffectiveMetaPublishers({
+    metaEnabled: platforms.meta,
+    facebookEnabled: platforms.facebook,
+    instagramEnabled: platforms.instagram,
+    form: metaAdvanced,
+  });
+
+  const metaAdvancedValidation = validateMetaAdvancedForm(metaAdvanced, {
+    metaEnabled: platforms.meta,
+  });
 
   useEffect(() => {
     if (!selectedProduct) {
@@ -199,23 +219,13 @@ export default function NewCampaignPage() {
         ? Number(budget.amount)
         : Number(budget.tiktok);
 
-  const autoMetaBudget = Number(
-    autoAllocation?.allocation?.meta ?? 0
-  );
-
-  const autoTikTokBudget = Number(
-    autoAllocation?.allocation?.tiktok ?? 0
-  );
+  const autoMetaBudget = Number(autoAllocation?.allocation?.meta ?? 0);
+  const autoTikTokBudget = Number(autoAllocation?.allocation?.tiktok ?? 0);
 
   const expectedMetaBudget =
-    allocationMode === "AUTO"
-      ? autoMetaBudget
-      : manualMetaBudget;
-
+    allocationMode === "AUTO" ? autoMetaBudget : manualMetaBudget;
   const expectedTikTokBudget =
-    allocationMode === "AUTO"
-      ? autoTikTokBudget
-      : manualTikTokBudget;
+    allocationMode === "AUTO" ? autoTikTokBudget : manualTikTokBudget;
 
   const manualAllocationMatches =
     Math.abs(
@@ -237,11 +247,7 @@ export default function NewCampaignPage() {
 
   function buildPlatformsInput() {
     return {
-      meta: {
-        enabled: platforms.meta,
-        facebook: platforms.meta && platforms.facebook,
-        instagram: platforms.meta && platforms.instagram,
-      },
+      meta: effectiveMetaPublishers,
       tiktok: {
         enabled: platforms.tiktok,
       },
@@ -249,7 +255,11 @@ export default function NewCampaignPage() {
   }
 
   function buildCampaignInput() {
-    if (!selectedProduct || !creativeIsReady) {
+    if (
+      !selectedProduct ||
+      !creativeIsReady ||
+      !metaAdvancedValidation.valid
+    ) {
       return null;
     }
 
@@ -311,6 +321,13 @@ export default function NewCampaignPage() {
                 },
               }
             : {}),
+      },
+
+      overrides: {
+        meta: platforms.meta
+          ? buildMetaOverridesFromForm(metaAdvanced)
+          : {},
+        tiktok: {},
       },
     };
   }
@@ -383,9 +400,9 @@ export default function NewCampaignPage() {
     hasSelectedPlatform,
     basicBudgetInputIsValid,
     platforms.meta,
-    platforms.facebook,
-    platforms.instagram,
     platforms.tiktok,
+    effectiveMetaPublishers.facebook,
+    effectiveMetaPublishers.instagram,
     budget.mode,
     budget.amount,
     budget.durationDays,
@@ -467,9 +484,9 @@ export default function NewCampaignPage() {
     basicBudgetInputIsValid,
     manualAllocationMatches,
     platforms.meta,
-    platforms.facebook,
-    platforms.instagram,
     platforms.tiktok,
+    effectiveMetaPublishers.facebook,
+    effectiveMetaPublishers.instagram,
     budget.mode,
     budget.amount,
     budget.durationDays,
@@ -489,6 +506,9 @@ export default function NewCampaignPage() {
         !budgetCompatibilityError &&
         budgetCompatibility?.eligible === true);
 
+  const canAdvanceBudget =
+    budgetIsCompatible && metaAdvancedValidation.valid;
+
   const manualTikTokMinimum =
     budgetCompatibility?.platforms?.tiktok?.minimumRequired;
 
@@ -501,10 +521,8 @@ export default function NewCampaignPage() {
 
       setBudget((current) => ({
         ...current,
-        meta:
-          autoAllocation?.allocation?.meta ?? fallbackMeta,
-        tiktok:
-          autoAllocation?.allocation?.tiktok ?? fallbackTikTok,
+        meta: autoAllocation?.allocation?.meta ?? fallbackMeta,
+        tiktok: autoAllocation?.allocation?.tiktok ?? fallbackTikTok,
       }));
     }
 
@@ -556,7 +574,6 @@ export default function NewCampaignPage() {
         method: "POST",
         body: formData,
       });
-
       const data = await response.json();
 
       if (!response.ok || !data.imageHash) {
@@ -628,7 +645,6 @@ export default function NewCampaignPage() {
         method: "POST",
         body: formData,
       });
-
       const data = await response.json();
 
       if (!response.ok || !data.videoId) {
@@ -670,7 +686,6 @@ export default function NewCampaignPage() {
         },
         body: JSON.stringify(campaignInput),
       });
-
       const data = await response.json();
 
       if (!response.ok) {
@@ -704,7 +719,6 @@ export default function NewCampaignPage() {
         },
         body: JSON.stringify(campaignInput),
       });
-
       const data = await response.json();
 
       if (!response.ok) {
@@ -741,10 +755,7 @@ export default function NewCampaignPage() {
   return (
     <main className="campaignPage">
       <header className="campaignHeader">
-        <a href="/" className="logo">
-          Relay
-        </a>
-
+        <a href="/" className="logo">Relay</a>
         <span className="stepLabel">Step {step} of 5</span>
       </header>
 
@@ -752,17 +763,12 @@ export default function NewCampaignPage() {
         {step === 1 && (
           <>
             <p className="eyebrow">CREATE CAMPAIGN</p>
-            <h1 className="campaignTitle">
-              What do you want to advertise?
-            </h1>
+            <h1 className="campaignTitle">What do you want to advertise?</h1>
             <p className="campaignSubtitle">
               Choose a product from your Shopify store.
             </p>
 
-            {loading && (
-              <p className="loadingText">Loading Shopify products...</p>
-            )}
-
+            {loading && <p className="loadingText">Loading Shopify products...</p>}
             {error && <p className="errorText">{error}</p>}
 
             <div className="productGrid">
@@ -783,27 +789,18 @@ export default function NewCampaignPage() {
                         className="productImage"
                       />
                     )}
-
                     <div className="productInfo">
                       <strong>{product.title}</strong>
-                      <span>
-                        {product.currency} {product.price}
-                      </span>
+                      <span>{product.currency} {product.price}</span>
                     </div>
-
-                    <div className="selectionIndicator">
-                      {selected ? "✓" : ""}
-                    </div>
+                    <div className="selectionIndicator">{selected ? "✓" : ""}</div>
                   </button>
                 );
               })}
             </div>
 
             <div className="campaignActions">
-              <a href="/" className="secondaryButton">
-                Back
-              </a>
-
+              <a href="/" className="secondaryButton">Back</a>
               <button
                 type="button"
                 disabled={!selectedProductId}
@@ -819,9 +816,7 @@ export default function NewCampaignPage() {
         {step === 2 && (
           <>
             <p className="eyebrow">CREATE CAMPAIGN</p>
-            <h1 className="campaignTitle">
-              Where do you want to advertise?
-            </h1>
+            <h1 className="campaignTitle">Where do you want to advertise?</h1>
             <p className="campaignSubtitle">
               Choose the platforms where this campaign will run.
             </p>
@@ -837,16 +832,12 @@ export default function NewCampaignPage() {
                       : "Meta not connected"}
                 </strong>
               </div>
-
               {metaSetupLoading ? (
                 <div className="connectionDot" />
               ) : metaSetup?.status === "READY" ? (
                 <div className="connectionDot connected">✓</div>
               ) : (
-                <a
-                  href="/api/meta/auth/start"
-                  className="secondaryButton"
-                >
+                <a href="/api/meta/auth/start" className="secondaryButton">
                   Connect Meta
                 </a>
               )}
@@ -858,10 +849,7 @@ export default function NewCampaignPage() {
                 type="button"
                 className={`platformCard ${platforms.meta ? "selected" : ""}`}
                 onClick={() => {
-                  if (metaSetup?.status !== "READY") {
-                    return;
-                  }
-
+                  if (metaSetup?.status !== "READY") return;
                   setPlatforms((current) => {
                     const enabled = !current.meta;
                     return {
@@ -882,9 +870,7 @@ export default function NewCampaignPage() {
                       : "Connect Meta first"}
                   </span>
                 </div>
-                <div className="selectionIndicator">
-                  {platforms.meta ? "✓" : ""}
-                </div>
+                <div className="selectionIndicator">{platforms.meta ? "✓" : ""}</div>
               </button>
 
               <button
@@ -902,9 +888,7 @@ export default function NewCampaignPage() {
                   <strong>TikTok</strong>
                   <span>TikTok Ads</span>
                 </div>
-                <div className="selectionIndicator">
-                  {platforms.tiktok ? "✓" : ""}
-                </div>
+                <div className="selectionIndicator">{platforms.tiktok ? "✓" : ""}</div>
               </button>
             </div>
 
@@ -916,7 +900,6 @@ export default function NewCampaignPage() {
               >
                 Back
               </button>
-
               <button
                 type="button"
                 className="continueButton"
@@ -939,7 +922,6 @@ export default function NewCampaignPage() {
 
             <div className="formSection">
               <h2>Audience</h2>
-
               <label className="field">
                 <span>Country</span>
                 <select
@@ -975,7 +957,6 @@ export default function NewCampaignPage() {
                     }
                   />
                 </label>
-
                 <label className="field">
                   <span>Maximum age</span>
                   <input
@@ -1013,7 +994,6 @@ export default function NewCampaignPage() {
 
             <div className="formSection">
               <h2>Budget</h2>
-
               <label className="field">
                 <span>Budget type</span>
                 <select
@@ -1050,7 +1030,6 @@ export default function NewCampaignPage() {
                     }
                   />
                 </label>
-
                 <label className="field">
                   <span>Duration (days)</span>
                   <input
@@ -1084,69 +1063,56 @@ export default function NewCampaignPage() {
                     Relay is checking the selected platforms...
                   </p>
                 )}
-
                 {allocationMode === "AUTO" && autoAllocationError && (
                   <p className="errorText">{autoAllocationError}</p>
                 )}
+                {allocationMode === "AUTO" && !autoAllocationLoading && autoAllocation && (
+                  <>
+                    {autoAllocation.eligible ? (
+                      <>
+                        <div className="reviewRow">
+                          <span>Budget</span>
+                          <strong>Ready</strong>
+                        </div>
+                        <p className="reviewDescription">
+                          Your budget works with the selected platforms. Relay
+                          will handle the distribution automatically.
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <p className="errorText">
+                          {autoAllocation.message ||
+                            "This budget cannot fund the selected platforms."}
+                        </p>
+                        {hasBothPlatforms && (
+                          <button
+                            type="button"
+                            className="stepBackButton"
+                            onClick={selectMetaOnly}
+                          >
+                            Use Meta only
+                          </button>
+                        )}
+                      </>
+                    )}
+                  </>
+                )}
 
-                {allocationMode === "AUTO" &&
-                  !autoAllocationLoading &&
-                  autoAllocation && (
-                    <>
-                      {autoAllocation.eligible ? (
-                        <>
-                          <div className="reviewRow">
-                            <span>Budget</span>
-                            <strong>Ready</strong>
-                          </div>
-                          <p className="reviewDescription">
-                            Your budget works with the selected platforms. Relay
-                            will handle the distribution automatically.
-                          </p>
-                        </>
-                      ) : (
-                        <>
-                          <p className="errorText">
-                            {autoAllocation.message ||
-                              "This budget cannot fund the selected platforms."}
-                          </p>
-
-                          {hasBothPlatforms && (
-                            <button
-                              type="button"
-                              className="stepBackButton"
-                              onClick={selectMetaOnly}
-                            >
-                              Use Meta only
-                            </button>
-                          )}
-                        </>
-                      )}
-                    </>
-                  )}
-
-                {allocationMode === "MANUAL" &&
-                  !manualAllocationMatches && (
-                    <p className="errorText">
-                      Meta and TikTok budgets must add up to {currency}{" "}
-                      {Number(budget.amount).toFixed(2)}.
-                    </p>
-                  )}
-
-                {allocationMode === "MANUAL" &&
-                  budgetCompatibilityLoading && (
-                    <p className="reviewDescription">
-                      Checking your manual distribution...
-                    </p>
-                  )}
-
-                {allocationMode === "MANUAL" &&
-                  budgetCompatibilityError && (
-                    <p className="errorText">
-                      {budgetCompatibilityError}
-                    </p>
-                  )}
-
+                {allocationMode === "MANUAL" && !manualAllocationMatches && (
+                  <p className="errorText">
+                    Meta and TikTok budgets must add up to {currency}{" "}
+                    {Number(budget.amount).toFixed(2)}.
+                  </p>
+                )}
+                {allocationMode === "MANUAL" && budgetCompatibilityLoading && (
+                  <p className="reviewDescription">
+                    Checking your manual distribution...
+                  </p>
+                )}
+                {allocationMode === "MANUAL" && budgetCompatibilityError && (
+                  <p className="errorText">{budgetCompatibilityError}</p>
+                )}
                 {allocationMode === "MANUAL" &&
                   !budgetCompatibilityLoading &&
                   budgetCompatibility && (
@@ -1161,7 +1127,6 @@ export default function NewCampaignPage() {
                           </strong>
                         </div>
                       )}
-
                       {platforms.tiktok && (
                         <div className="reviewRow">
                           <span>TikTok</span>
@@ -1172,15 +1137,12 @@ export default function NewCampaignPage() {
                           </strong>
                         </div>
                       )}
-
                       {platforms.tiktok && manualTikTokMinimum && (
                         <div className="reviewRow">
                           <span>
                             {budget.mode === "DAILY"
                               ? "TikTok minimum per day"
-                              : `TikTok minimum for ${budget.durationDays} day${
-                                  budget.durationDays === 1 ? "" : "s"
-                                }`}
+                              : `TikTok minimum for ${budget.durationDays} day${budget.durationDays === 1 ? "" : "s"}`}
                           </span>
                           <strong>
                             {manualTikTokMinimum.currency}{" "}
@@ -1189,7 +1151,6 @@ export default function NewCampaignPage() {
                           </strong>
                         </div>
                       )}
-
                       {budgetCompatibility.issues.map((issue) => (
                         <p
                           key={`${issue.platform || "RELAY"}-${issue.code}`}
@@ -1198,7 +1159,6 @@ export default function NewCampaignPage() {
                           {issue.message}
                         </p>
                       ))}
-
                       {budgetCompatibility.eligible && (
                         <p className="reviewDescription">
                           Your manual distribution is compatible with every
@@ -1210,85 +1170,20 @@ export default function NewCampaignPage() {
               </div>
 
               {advancedOpen && (
-                <div className="advancedPanel">
-                  <div className="advancedPanelHeader">
-                    <div>
-                      <span className="creativeLabel">ADVANCED SETTINGS</span>
-                      <h2>Budget distribution</h2>
-                    </div>
-                  </div>
-
-                  {hasBothPlatforms ? (
-                    <>
-                      <label className="field">
-                        <span>Distribution</span>
-                        <select
-                          value={allocationMode}
-                          onChange={(event) =>
-                            changeAllocationMode(event.target.value)
-                          }
-                        >
-                          <option value="AUTO">Automatic by Relay</option>
-                          <option value="MANUAL">Set manually</option>
-                        </select>
-                      </label>
-
-                      {allocationMode === "AUTO" ? (
-                        <p className="reviewDescription">
-                          Relay chooses a technically valid distribution across
-                          Meta and TikTok. This v0.1 rule starts from an even
-                          split and adjusts only when a platform minimum requires
-                          it.
-                        </p>
-                      ) : (
-                        <div className="fieldRow advancedBudgetFields">
-                          <label className="field">
-                            <span>
-                              Meta {budget.mode === "DAILY" ? "daily" : "total"}{" "}
-                              budget ({currency})
-                            </span>
-                            <input
-                              type="number"
-                              min="0"
-                              step="0.01"
-                              value={budget.meta}
-                              onChange={(event) =>
-                                setBudget((current) => ({
-                                  ...current,
-                                  meta: Number(event.target.value),
-                                }))
-                              }
-                            />
-                          </label>
-
-                          <label className="field">
-                            <span>
-                              TikTok {budget.mode === "DAILY" ? "daily" : "total"}{" "}
-                              budget ({currency})
-                            </span>
-                            <input
-                              type="number"
-                              min="0"
-                              step="0.01"
-                              value={budget.tiktok}
-                              onChange={(event) =>
-                                setBudget((current) => ({
-                                  ...current,
-                                  tiktok: Number(event.target.value),
-                                }))
-                              }
-                            />
-                          </label>
-                        </div>
-                      )}
-                    </>
-                  ) : (
-                    <p className="reviewDescription">
-                      Only one platform is selected, so it receives the full
-                      campaign budget automatically.
-                    </p>
-                  )}
-                </div>
+                <MetaAdvancedSettings
+                  hasBothPlatforms={hasBothPlatforms}
+                  allocationMode={allocationMode}
+                  changeAllocationMode={changeAllocationMode}
+                  budget={budget}
+                  currency={currency}
+                  setBudget={setBudget}
+                  metaEnabled={platforms.meta}
+                  facebookEnabled={platforms.facebook}
+                  instagramEnabled={platforms.instagram}
+                  metaAdvanced={metaAdvanced}
+                  setMetaAdvanced={setMetaAdvanced}
+                  validation={metaAdvancedValidation}
+                />
               )}
             </div>
 
@@ -1300,7 +1195,6 @@ export default function NewCampaignPage() {
               >
                 Back
               </button>
-
               <div className="campaignActionRight">
                 <button
                   type="button"
@@ -1311,11 +1205,10 @@ export default function NewCampaignPage() {
                     ? "Hide advanced settings ↑"
                     : "Advanced settings →"}
                 </button>
-
                 <button
                   type="button"
                   className="continueButton"
-                  disabled={!budgetIsCompatible}
+                  disabled={!canAdvanceBudget}
                   onClick={() => setStep(4)}
                 >
                   Continue
@@ -1330,22 +1223,18 @@ export default function NewCampaignPage() {
             <p className="eyebrow">CREATE CAMPAIGN</p>
             <h1 className="campaignTitle">Create your ad</h1>
             <p className="campaignSubtitle">
-              Choose an image or video, then customize the message people will
-              see.
+              Choose an image or video, then customize the message people will see.
             </p>
 
             <div className="formSection">
               <h2>Creative</h2>
-
               <div className="platformGrid">
                 <button
                   type="button"
                   disabled={!canUploadMetaAsset}
                   className={`platformCard ${creativeType === "IMAGE" ? "selected" : ""}`}
                   onClick={() => {
-                    if (canUploadMetaAsset) {
-                      setCreativeType("IMAGE");
-                    }
+                    if (canUploadMetaAsset) setCreativeType("IMAGE");
                   }}
                 >
                   <div>
@@ -1356,9 +1245,7 @@ export default function NewCampaignPage() {
                         : "Select and connect Meta to upload an image"}
                     </span>
                   </div>
-                  <div className="selectionIndicator">
-                    {creativeType === "IMAGE" ? "✓" : ""}
-                  </div>
+                  <div className="selectionIndicator">{creativeType === "IMAGE" ? "✓" : ""}</div>
                 </button>
 
                 <button
@@ -1366,9 +1253,7 @@ export default function NewCampaignPage() {
                   disabled={!canUploadMetaAsset}
                   className={`platformCard ${creativeType === "VIDEO" ? "selected" : ""}`}
                   onClick={() => {
-                    if (canUploadMetaAsset) {
-                      setCreativeType("VIDEO");
-                    }
+                    if (canUploadMetaAsset) setCreativeType("VIDEO");
                   }}
                 >
                   <div>
@@ -1379,9 +1264,7 @@ export default function NewCampaignPage() {
                         : "Select and connect Meta to upload video"}
                     </span>
                   </div>
-                  <div className="selectionIndicator">
-                    {creativeType === "VIDEO" ? "✓" : ""}
-                  </div>
+                  <div className="selectionIndicator">{creativeType === "VIDEO" ? "✓" : ""}</div>
                 </button>
               </div>
 
@@ -1392,30 +1275,21 @@ export default function NewCampaignPage() {
                     <input
                       type="file"
                       accept="image/*"
-                      disabled={
-                        !canUploadMetaAsset ||
-                        imageUpload.status === "UPLOADING"
+                      disabled={!canUploadMetaAsset || imageUpload.status === "UPLOADING"}
+                      onChange={(event) =>
+                        uploadCreativeImage(event.target.files?.[0] ?? null)
                       }
-                      onChange={(event) => {
-                        const file = event.target.files?.[0] ?? null;
-                        uploadCreativeImage(file);
-                      }}
                     />
                   </label>
-
                   {imageUpload.status === "UPLOADING" && (
-                    <p className="reviewDescription">
-                      Uploading image to Meta...
-                    </p>
+                    <p className="reviewDescription">Uploading image to Meta...</p>
                   )}
-
                   {imageUpload.status === "READY" && (
                     <p className="reviewDescription">
                       ✓ {imageUpload.fileName || "Image"} is ready. Relay will
                       reuse this Meta image asset when the campaign is created.
                     </p>
                   )}
-
                   {imageUpload.status === "ERROR" && (
                     <p className="errorText">{imageUpload.error}</p>
                   )}
@@ -1430,26 +1304,20 @@ export default function NewCampaignPage() {
                       type="file"
                       accept="video/*"
                       disabled={videoUpload.status === "UPLOADING"}
-                      onChange={(event) => {
-                        const file = event.target.files?.[0] ?? null;
-                        uploadCreativeVideo(file);
-                      }}
+                      onChange={(event) =>
+                        uploadCreativeVideo(event.target.files?.[0] ?? null)
+                      }
                     />
                   </label>
-
                   {videoUpload.status === "UPLOADING" && (
-                    <p className="reviewDescription">
-                      Uploading video to Meta...
-                    </p>
+                    <p className="reviewDescription">Uploading video to Meta...</p>
                   )}
-
                   {videoUpload.status === "READY" && (
                     <p className="reviewDescription">
                       ✓ {videoUpload.fileName || "Video"} is ready. Relay will
                       reuse this Meta video asset when the campaign is created.
                     </p>
                   )}
-
                   {videoUpload.status === "ERROR" && (
                     <p className="errorText">{videoUpload.error}</p>
                   )}
@@ -1474,16 +1342,11 @@ export default function NewCampaignPage() {
                     className="creativeImage"
                   />
                 ) : null}
-
                 <div className="creativePreviewContent">
                   <span className="creativeLabel">
-                    {creativeType === "VIDEO"
-                      ? "VIDEO PREVIEW"
-                      : "AD PREVIEW"}
+                    {creativeType === "VIDEO" ? "VIDEO PREVIEW" : "AD PREVIEW"}
                   </span>
-                  <strong>
-                    {creative.headline || selectedProduct.title}
-                  </strong>
+                  <strong>{creative.headline || selectedProduct.title}</strong>
                   <p>{creative.primaryText}</p>
                 </div>
               </div>
@@ -1503,7 +1366,6 @@ export default function NewCampaignPage() {
                   }
                 />
               </label>
-
               <label className="field">
                 <span>Headline</span>
                 <input
@@ -1517,7 +1379,6 @@ export default function NewCampaignPage() {
                   }
                 />
               </label>
-
               <label className="field">
                 <span>Destination URL</span>
                 <input
@@ -1541,7 +1402,6 @@ export default function NewCampaignPage() {
               >
                 Back
               </button>
-
               <button
                 type="button"
                 className="continueButton"
@@ -1552,8 +1412,7 @@ export default function NewCampaignPage() {
                 }
                 onClick={() => setStep(5)}
               >
-                {imageUpload.status === "UPLOADING" ||
-                videoUpload.status === "UPLOADING"
+                {imageUpload.status === "UPLOADING" || videoUpload.status === "UPLOADING"
                   ? "Uploading..."
                   : "Continue"}
               </button>
@@ -1572,12 +1431,10 @@ export default function NewCampaignPage() {
 
             <div className="reviewSection">
               <h2>Campaign</h2>
-
               <div className="reviewRow">
                 <span>Product</span>
                 <strong>{selectedProduct?.title || "—"}</strong>
               </div>
-
               <div className="reviewRow">
                 <span>Creative</span>
                 <strong>
@@ -1586,78 +1443,93 @@ export default function NewCampaignPage() {
                     : `Image${imageUpload.fileName ? ` · ${imageUpload.fileName}` : ""}`}
                 </strong>
               </div>
-
               <div className="reviewRow">
                 <span>Platforms</span>
                 <strong>
                   {[
                     platforms.meta ? "Meta" : null,
                     platforms.tiktok ? "TikTok" : null,
-                  ]
-                    .filter(Boolean)
-                    .join(" + ")}
+                  ].filter(Boolean).join(" + ")}
                 </strong>
               </div>
-
               <div className="reviewRow">
                 <span>Budget type</span>
-                <strong>
-                  {budget.mode === "DAILY" ? "Daily" : "Total"}
-                </strong>
+                <strong>{budget.mode === "DAILY" ? "Daily" : "Total"}</strong>
               </div>
-
               <div className="reviewRow">
-                <span>
-                  {budget.mode === "DAILY" ? "Daily budget" : "Total budget"}
-                </span>
+                <span>{budget.mode === "DAILY" ? "Daily budget" : "Total budget"}</span>
                 <strong>
-                  {currency} {budget.amount}
-                  {budget.mode === "DAILY" ? "/day" : ""}
+                  {currency} {budget.amount}{budget.mode === "DAILY" ? "/day" : ""}
                 </strong>
               </div>
-
               {budget.mode === "DAILY" && (
                 <div className="reviewRow">
                   <span>Estimated campaign spend</span>
-                  <strong>
-                    {currency} {Number(projectedTotal).toFixed(2)}
-                  </strong>
+                  <strong>{currency} {Number(projectedTotal).toFixed(2)}</strong>
                 </div>
               )}
-
               <div className="reviewRow">
                 <span>Duration</span>
                 <strong>{budget.durationDays} days</strong>
               </div>
-
               <div className="reviewRow">
                 <span>Budget distribution</span>
-                <strong>
-                  {allocationMode === "AUTO"
-                    ? "Automatic by Relay"
-                    : "Manual"}
-                </strong>
+                <strong>{allocationMode === "AUTO" ? "Automatic by Relay" : "Manual"}</strong>
               </div>
             </div>
+
+            {platforms.meta && (
+              <div className="reviewSection">
+                <h2>Meta configuration</h2>
+                <div className="reviewRow">
+                  <span>Audience</span>
+                  <strong>
+                    {metaAdvanced.audienceStrategy === "ADVANTAGE_PLUS"
+                      ? "Advantage+"
+                      : "Manual"}
+                  </strong>
+                </div>
+                <div className="reviewRow">
+                  <span>Bidding</span>
+                  <strong>
+                    {metaAdvanced.biddingStrategy === "COST_CAP"
+                      ? `Cost cap · ${currency} ${Number(metaAdvanced.costCap).toFixed(2)}`
+                      : "Lowest cost"}
+                  </strong>
+                </div>
+                <div className="reviewRow">
+                  <span>Placements</span>
+                  <strong>
+                    {metaAdvanced.placementsMode === "RECOMMENDED"
+                      ? "Relay recommended"
+                      : "Manual"}
+                  </strong>
+                </div>
+                {metaAdvanced.placementsMode === "MANUAL" && (
+                  <>
+                    <div className="reviewRow">
+                      <span>Facebook</span>
+                      <strong>{metaAdvanced.facebookPositions.join(", ") || "Off"}</strong>
+                    </div>
+                    <div className="reviewRow">
+                      <span>Instagram</span>
+                      <strong>{metaAdvanced.instagramPositions.join(", ") || "Off"}</strong>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
 
             {allocationMode === "MANUAL" && hasBothPlatforms && (
               <div className="reviewSection">
                 <h2>Manual allocation</h2>
-
                 <div className="reviewRow">
                   <span>Meta</span>
-                  <strong>
-                    {currency} {expectedMetaBudget}
-                    {budget.mode === "DAILY" ? "/day" : ""}
-                  </strong>
+                  <strong>{currency} {expectedMetaBudget}{budget.mode === "DAILY" ? "/day" : ""}</strong>
                 </div>
-
                 <div className="reviewRow">
                   <span>TikTok</span>
-                  <strong>
-                    {currency} {expectedTikTokBudget}
-                    {budget.mode === "DAILY" ? "/day" : ""}
-                  </strong>
+                  <strong>{currency} {expectedTikTokBudget}{budget.mode === "DAILY" ? "/day" : ""}</strong>
                 </div>
               </div>
             )}
@@ -1674,7 +1546,6 @@ export default function NewCampaignPage() {
             )}
 
             {planError && <p className="errorText">{planError}</p>}
-
             {planResult && (
               <details className="reviewSection">
                 <summary>Developer details</summary>
@@ -1691,13 +1562,11 @@ export default function NewCampaignPage() {
             )}
 
             {launchError && <p className="errorText">{launchError}</p>}
-
             {launchResult && (
               <div className="reviewSection">
                 <h2>Campaign created</h2>
                 <p className="reviewDescription">
-                  Relay created the Meta campaign in PAUSED mode. No ad spend
-                  is active.
+                  Relay created the Meta campaign in PAUSED mode. No ad spend is active.
                 </p>
                 <div className="reviewRow">
                   <span>Status</span>
@@ -1714,7 +1583,6 @@ export default function NewCampaignPage() {
               >
                 Back
               </button>
-
               <div style={{ display: "flex", gap: 12 }}>
                 <button
                   type="button"
@@ -1723,12 +1591,12 @@ export default function NewCampaignPage() {
                   disabled={
                     generatingPlan ||
                     !budgetIsCompatible ||
-                    !creativeIsReady
+                    !creativeIsReady ||
+                    !metaAdvancedValidation.valid
                   }
                 >
                   {generatingPlan ? "Checking..." : "View developer plan"}
                 </button>
-
                 <button
                   type="button"
                   className="continueButton"
@@ -1738,6 +1606,7 @@ export default function NewCampaignPage() {
                     !!launchResult ||
                     !budgetIsCompatible ||
                     !creativeIsReady ||
+                    !metaAdvancedValidation.valid ||
                     !platforms.meta ||
                     platforms.tiktok
                   }
