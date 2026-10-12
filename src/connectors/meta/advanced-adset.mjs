@@ -104,6 +104,50 @@ function normalizeAudienceIds(values) {
   return result;
 }
 
+function buildTargetingRelaxationTypes(
+  includedAudiences,
+  advantageAudience
+) {
+  if (!Array.isArray(includedAudiences)) {
+    return null;
+  }
+
+  let hasCustomAudience = false;
+  let hasLookalike = false;
+
+  for (const audience of includedAudiences) {
+    const kind = String(
+      audience?.kind ?? audience?.subtype ?? "CUSTOM"
+    ).toUpperCase();
+
+    if (kind === "LOOKALIKE") {
+      hasLookalike = true;
+    } else {
+      hasCustomAudience = true;
+    }
+  }
+
+  if (!hasCustomAudience && !hasLookalike) {
+    return null;
+  }
+
+  const relaxation = {};
+
+  if (hasCustomAudience) {
+    // Meta allows Custom Audience expansion to be disabled after switching
+    // to the specific/original audience flow. In Advantage+ it is a suggestion.
+    relaxation.custom_audience = advantageAudience ? 1 : 0;
+  }
+
+  if (hasLookalike) {
+    // For Sales/Purchase conversion optimization, Lookalike targeting remains
+    // expanded/a suggestion even when Advantage+ Audience is switched off.
+    relaxation.lookalike = 1;
+  }
+
+  return relaxation;
+}
+
 function buildDetailedTargetingGroup(values) {
   if (!Array.isArray(values) || values.length === 0) {
     return null;
@@ -174,8 +218,8 @@ export function buildMetaAudienceTargeting({
 
   if (advantageAudience) {
     // Meta's current Advantage+ audience UI treats maximum age and gender as
-    // suggestions while location/minimum age remain controls. age_range mirrors
-    // the range suggestion that Ads Manager sends alongside age_min/age_max.
+    // suggestions while location/minimum age remain controls. age_range is the
+    // explicit age-range suggestion used by current Marketing API targeting.
     targeting.age_range = [minAge, maxAge];
     targeting.targeting_automation = {
       advantage_audience: 1,
@@ -193,6 +237,15 @@ export function buildMetaAudienceTargeting({
   const included = normalizeAudienceIds(includedAudiences);
   if (included.length > 0) {
     targeting.custom_audiences = included;
+
+    const relaxation = buildTargetingRelaxationTypes(
+      includedAudiences,
+      advantageAudience
+    );
+
+    if (relaxation) {
+      targeting.targeting_relaxation_types = relaxation;
+    }
   }
 
   const excluded = normalizeAudienceIds(excludedAudiences);
@@ -203,7 +256,8 @@ export function buildMetaAudienceTargeting({
   const flexibleGroup = buildDetailedTargetingGroup(detailedTargeting);
   if (flexibleGroup) {
     // One flexible_spec group matches Ads Manager's default "at least one"
-    // detailed-targeting group. A second group would mean "narrow further".
+    // detailed-targeting group. With Sales/Purchase conversion optimization,
+    // Meta can expand beyond these inputs even in the specific-audience flow.
     targeting.flexible_spec = [flexibleGroup];
   }
 
