@@ -1,8 +1,45 @@
 const DEFAULT_POSITIONS = ["FEED", "STORIES", "REELS"];
 
+function copyAudienceSelection(values) {
+  if (!Array.isArray(values)) {
+    return [];
+  }
+
+  return values
+    .filter((item) => item?.id && item?.name)
+    .map((item) => ({
+      id: String(item.id),
+      name: String(item.name),
+      subtype: item.subtype ? String(item.subtype).toUpperCase() : "UNKNOWN",
+      kind:
+        String(item.kind ?? item.subtype ?? "CUSTOM").toUpperCase() ===
+        "LOOKALIKE"
+          ? "LOOKALIKE"
+          : "CUSTOM",
+    }));
+}
+
+function copyDetailedTargeting(values) {
+  if (!Array.isArray(values)) {
+    return [];
+  }
+
+  return values
+    .filter((item) => item?.id && item?.name && item?.type)
+    .map((item) => ({
+      id: String(item.id),
+      name: String(item.name),
+      type: String(item.type).toLowerCase(),
+      path: Array.isArray(item.path) ? item.path.map(String) : [],
+    }));
+}
+
 export function createDefaultMetaAdvancedForm() {
   return {
     audienceStrategy: "ADVANTAGE_PLUS",
+    includedAudiences: [],
+    excludedAudiences: [],
+    detailedTargeting: [],
     biddingStrategy: "LOWEST_COST",
     costCap: "",
     placementsMode: "RECOMMENDED",
@@ -21,6 +58,22 @@ export function buildMetaOverridesFromForm(form) {
   const placementsMode = String(
     form?.placementsMode ?? "RECOMMENDED"
   ).toUpperCase();
+
+  const audience = {
+    mode:
+      audienceStrategy === "MANUAL"
+        ? "SPECIFIC"
+        : "ADVANTAGE_PLUS",
+    includedAudiences: copyAudienceSelection(
+      form?.includedAudiences
+    ),
+    excludedAudiences: copyAudienceSelection(
+      form?.excludedAudiences
+    ),
+    detailedTargeting: copyDetailedTargeting(
+      form?.detailedTargeting
+    ),
+  };
 
   const bidding = {
     strategy: biddingStrategy,
@@ -41,6 +94,7 @@ export function buildMetaOverridesFromForm(form) {
 
   return {
     audienceStrategy,
+    audience,
     bidding,
     placements,
   };
@@ -90,6 +144,20 @@ export function validateMetaAdvancedForm(form, { metaEnabled = true } = {}) {
     return {
       valid: true,
       error: null,
+    };
+  }
+
+  const audienceStrategy = String(
+    form?.audienceStrategy ?? "ADVANTAGE_PLUS"
+  ).toUpperCase();
+
+  if (
+    audienceStrategy !== "ADVANTAGE_PLUS" &&
+    audienceStrategy !== "MANUAL"
+  ) {
+    return {
+      valid: false,
+      error: "Choose a valid Meta audience delivery mode.",
     };
   }
 
