@@ -33,7 +33,7 @@ export function createConnectionStore({ db = getRelayDatabase(), encryptionKey =
             .run(userId, name, envelope, new Date().toISOString());
           return connection;
         },
-        async get(name) {
+        async getVersioned(name) {
           provider(name);
           const row = db.prepare("SELECT encrypted_payload FROM connections WHERE user_id = ? AND provider = ?").get(userId, name);
           if (!row) return null;
@@ -42,7 +42,19 @@ export function createConnectionStore({ db = getRelayDatabase(), encryptionKey =
           const decipher = createDecipheriv("aes-256-gcm", key(), Buffer.from(envelope.iv, "base64"));
           decipher.setAAD(Buffer.from(`${userId}:${name}`));
           decipher.setAuthTag(Buffer.from(envelope.tag, "base64"));
-          return JSON.parse(Buffer.concat([decipher.update(Buffer.from(envelope.payload, "base64")), decipher.final()]).toString("utf8"));
+          return { value: JSON.parse(Buffer.concat([decipher.update(Buffer.from(envelope.payload, "base64")), decipher.final()]).toString("utf8")), revision: row.encrypted_payload };
+        },
+        async get(name) { return (await this.getVersioned(name))?.value ?? null; },
+        async updateIfCurrent(name, connection, revision) {
+          provider(name);
+          if (!connection || typeof connection !== "object" || Array.isArray(connection) || typeof revision !== "string") throw new Error("A versioned connection is required");
+          const iv = randomBytes(12);
+          const cipher = createCipheriv("aes-256-gcm", key(), iv);
+          cipher.setAAD(Buffer.from(`${userId}:${name}`));
+          const payload = Buffer.concat([cipher.update(JSON.stringify(connection), "utf8"), cipher.final()]);
+          const envelope = JSON.stringify({ version: 1, iv: iv.toString("base64"), tag: cipher.getAuthTag().toString("base64"), payload: payload.toString("base64") });
+          return db.prepare("UPDATE connections SET encrypted_payload = ?, updated_at = ? WHERE user_id = ? AND provider = ? AND encrypted_payload = ?")
+            .run(envelope, new Date().toISOString(), userId, name, revision).changes === 1;
         },
         async delete(name) { provider(name); db.prepare("DELETE FROM connections WHERE user_id = ? AND provider = ?").run(userId, name); },
       };

@@ -1,11 +1,11 @@
-const SHOPIFY_API_VERSION = "2026-10";
+import { normalizeShopDomain, shopifyFetch, ShopifyError, SHOPIFY_API_VERSION } from "./client.mjs";
 
 function buildShopifyGraphqlUrl(shop) {
   if (!shop?.trim()) {
     throw new Error("Missing Shopify shop");
   }
 
-  return `https://${shop}.myshopify.com/admin/api/${SHOPIFY_API_VERSION}/graphql.json`;
+  return `https://${normalizeShopDomain(shop)}/admin/api/${SHOPIFY_API_VERSION}/graphql.json`;
 }
 
 function classifyGraphqlErrors(errors = []) {
@@ -58,7 +58,7 @@ export async function inspectShopifyWebPixelAccess({
     }
   `;
 
-  const response = await fetchImpl(
+  const response = await shopifyFetch(
     buildShopifyGraphqlUrl(shop),
     {
       method: "POST",
@@ -67,16 +67,15 @@ export async function inspectShopifyWebPixelAccess({
         "X-Shopify-Access-Token": accessToken,
       },
       body: JSON.stringify({ query }),
-    }
+    },
+    fetchImpl
   );
 
-  const result = await response.json();
-
+  if (response.status === 401) throw new ShopifyError("Reconnect Shopify to restore access.", 409, "REAUTHORIZE");
   if (!response.ok) {
-    throw new Error(
-      `Shopify Web Pixel request failed: ${response.status} ${JSON.stringify(result)}`
-    );
+    throw new ShopifyError("Could not inspect Shopify tracking capabilities. Try again shortly.", response.status === 429 || response.status >= 500 ? 503 : 502);
   }
+  const result = await response.json();
 
   if (Array.isArray(result.errors) && result.errors.length > 0) {
     return classifyGraphqlErrors(result.errors);

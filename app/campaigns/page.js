@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import ConnectedAccounts from "./ConnectedAccounts";
 
 function formatMoney(value, currency) {
     if (value == null) {
@@ -85,7 +86,7 @@ export default function CampaignsPage() {
         async function loadCampaigns() {
             try {
                 const response = await fetch("/api/campaigns");
-            if (response.status === 401) { window.location.assign("/login"); return; }
+                if (response.status === 401) { window.location.assign("/login"); return; }
                 const data = await response.json();
 
                 if (!response.ok) {
@@ -132,6 +133,8 @@ export default function CampaignsPage() {
                 <p className="campaignSubtitle">
                     See how your ads are performing without opening Ads Manager.
                 </p>
+
+                <ConnectedAccounts />
 
                 {loading && (
                     <p className="loadingText">

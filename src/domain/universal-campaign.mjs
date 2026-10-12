@@ -86,6 +86,10 @@ export function createUniversalCampaign(input) {
     throw new Error("A product is required");
   }
 
+  if (input.product?.published === false) {
+    throw new Error("Publish this product to your Shopify online store before advertising it");
+  }
+
   if (!input.audience?.countries?.length) {
     throw new Error("At least one country is required");
   }
@@ -228,6 +232,7 @@ export function createUniversalCampaign(input) {
       id: input.product.id,
       title: input.product.title,
       price: input.product.price,
+      published: input.product.published,
       currency: input.product.currency,
       imageUrl: input.product.imageUrl ?? null,
       destinationUrl:

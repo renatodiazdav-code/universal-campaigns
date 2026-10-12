@@ -11,7 +11,7 @@ Requires Node.js 24 or newer.
 
    `npm run migrate:legacy -- --email YOUR_REGISTERED_EMAIL`
 
-The import keeps source files, skips already imported campaigns and does not overwrite an existing provider connection. It never assigns legacy data automatically to the first registrant. The Shopify import is a development bridge; merchant Shopify OAuth remains the next integration block.
+The import keeps source files, skips already imported campaigns and does not overwrite an existing provider connection. It never assigns legacy data automatically to the first registrant. The Shopify import is a development bridge; merchants can now authorize their own stores through Shopify OAuth. See `docs/shopify-connection.md`.
 
 ## APIs
 

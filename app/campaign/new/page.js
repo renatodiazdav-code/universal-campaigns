@@ -313,6 +313,7 @@ export default function NewCampaignPage() {
         id: selectedProduct.id,
         title: selectedProduct.title,
         price: Number(selectedProduct.price),
+        published: selectedProduct.published,
         currency: selectedProduct.currency,
         imageUrl: selectedProduct.imageUrl,
         destinationUrl: selectedProduct.destinationUrl,
@@ -837,6 +838,7 @@ export default function NewCampaignPage() {
                   <button
                     key={product.id}
                     type="button"
+                    disabled={product.published === false}
                     className={`productCard ${selected ? "selected" : ""}`}
                     onClick={() => setSelectedProductId(product.id)}
                   >
@@ -849,7 +851,7 @@ export default function NewCampaignPage() {
                     )}
                     <div className="productInfo">
                       <strong>{product.title}</strong>
-                      <span>{product.currency} {product.price}</span>
+                      <span>{product.published === false ? "Publish this product on your online store first" : `${product.currency} ${product.price}`}</span>
                     </div>
                     <div className="selectionIndicator">{selected ? "✓" : ""}</div>
                   </button>

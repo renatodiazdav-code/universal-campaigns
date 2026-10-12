@@ -34,6 +34,14 @@ export function openRelayDatabase(filePath = process.env.RELAY_DATABASE_PATH || 
     CREATE TABLE IF NOT EXISTS auth_limits (
       key TEXT PRIMARY KEY, attempts INTEGER NOT NULL, expires_at INTEGER NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS shopify_oauth_states (
+      state_hash TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      session_hash TEXT NOT NULL, shop TEXT NOT NULL, expires_at INTEGER NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS connection_refresh_locks (
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, provider TEXT NOT NULL,
+      lease_id TEXT NOT NULL, expires_at INTEGER NOT NULL, PRIMARY KEY(user_id, provider)
+    );
   `);
   if (filePath !== ":memory:") {
     for (const path of [filePath, `${filePath}-wal`, `${filePath}-shm`]) {

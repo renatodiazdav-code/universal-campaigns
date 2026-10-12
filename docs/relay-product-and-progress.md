@@ -37,9 +37,9 @@ Updated: 2026-10-12
 - Meta creates paused campaigns; activation/pause management is still pending.
 - TikTok execution and authorization are not implemented. Its plan is a Relay plan, not a verified native API payload.
 - Renato reports a TikTok Business account under review. Confirm which account/app approval is pending before live integration tests.
-- Shopify currently loads the server-configured development store. Merchant authorization is pending.
+- Merchants can authorize their own Shopify stores from the dashboard. Signed, single-use callbacks bind to the user/session/store; encrypted expiring offline tokens renew automatically. Product APIs use that user's store, support pagination/search, and retain Shopify's published storefront URLs. See `docs/shopify-connection.md` for app setup and live validation requirements.
 - Account registration/login/logout, expiring sessions, authenticated APIs, owner-scoped SQLite campaigns and encrypted per-user connections are implemented. See `docs/backend-accounts.md` for setup and deployment constraints. Email verification and recovery remain pending.
 - Universal reporting currently receives only Meta metrics. TikTok reporting and attribution reconciliation are pending.
 - The first beta has a three-week target. API approvals and live validation are external dependencies.
 
-Next engineering block: merchant Shopify OAuth (replacing the explicit development-store import), then TikTok executor and live launch lifecycle.
+Next engineering block: live Shopify authorization with the configured app, then Meta activation/pause and review status. Prepare TikTok OAuth/execution against official API contracts while its account/app approval is pending. Public distribution, required Shopify compliance/uninstall webhooks, hosted database setup and live provider validation remain launch requirements.

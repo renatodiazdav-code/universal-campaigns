@@ -3,6 +3,11 @@ import assert from "node:assert/strict";
 
 import { inspectShopifyWebPixelAccess } from "../src/connectors/shopify/web-pixel.mjs";
 
+test("revoked Web Pixel credentials request reconnection without exposing provider errors", async () => {
+  await assert.rejects(inspectShopifyWebPixelAccess({ shop: "test-store", accessToken: "private", fetchImpl: async () => Response.json({ error: "private-provider-response" }, { status: 401 }) }),
+    error => error.code === "REAUTHORIZE" && error.status === 409 && !error.message.includes("private-provider-response"));
+});
+
 function jsonResponse(body, { ok = true, status = 200 } = {}) {
   return {
     ok,

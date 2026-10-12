@@ -7,9 +7,11 @@ export const GET = withUser(async function GET(request, { user }) {
   for (const provider of ["meta", "shopify", "tiktok"]) {
     const connection = await store.get(provider);
     connections[provider] = {
-      connected: Boolean(connection?.accessToken),
-      name: provider === "shopify" ? connection?.shop ?? null : connection?.setup?.adAccount?.name ?? null,
+      connected: Boolean(connection?.accessToken) && connection?.status !== "REAUTHORIZE_REQUIRED",
+      status: connection?.status ?? (connection?.accessToken ? "CONNECTED" : "NOT_CONNECTED"),
+      name: provider === "shopify" ? connection?.store?.name ?? connection?.shop ?? null : connection?.setup?.adAccount?.name ?? null,
       connectedAt: connection?.connectedAt ?? null,
+      ...(provider === "shopify" ? { shop: connection?.shop ?? null, currency: connection?.store?.currency ?? null, storefrontUrl: connection?.store?.storefrontUrl ?? null } : {}),
     };
   }
   return Response.json({ connections });
