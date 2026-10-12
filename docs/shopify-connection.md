@@ -4,11 +4,12 @@
 
 1. Run `npm run setup:local` if `.env.local` is not configured.
 2. Set `SHOPIFY_CLIENT_ID` and `SHOPIFY_CLIENT_SECRET` to the Relay Shopify app credentials in `.env.local`. These belong to Relay, not to individual merchants. Do not commit or send them in chat.
-3. Register `${APP_URL}/api/shopify/auth/callback` as an allowed redirect URL in the Shopify app. With the default local setup, this is `http://localhost:3000/api/shopify/auth/callback`. Use the same host as `APP_URL` when opening Relay.
+3. For the existing development store, set `SHOPIFY_SHOP=luvixy` (or its `myshopify.com` address). Restart Relay, register/sign in, then use **Use configured Shopify test store** on `/campaigns`. This only appears locally and never in production.
 4. Configure `read_products` access in the app. Relay currently requests only this scope; no customer, order or write access is requested.
-5. Restart Relay, register/sign in, then use **Connected accounts → Connect Shopify** on `/campaigns`. Enter the store's `myshopify.com` address, approve access on Shopify, and return to Relay. Merchants never copy tokens, IDs or app secrets.
 
-Use a development store allowed by the app for the first live check. Public merchant distribution and Shopify's app requirements must be configured before opening Relay to external stores. Production uses the HTTPS `APP_URL` callback.
+The Dev Dashboard screen in Shopify does not show a redirect-URL field for this same-organization development-store flow. It uses the app's client credentials. Do not search for that field to test `luvixy`.
+
+Use the configured development store for the first live check. External merchant OAuth still needs the redirect URL configured through the Shopify app's public distribution/CLI configuration before opening Relay to other stores. Production uses an HTTPS callback.
 
 ## Implemented behavior
 

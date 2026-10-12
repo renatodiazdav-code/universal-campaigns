@@ -27,6 +27,16 @@ export default function ConnectedAccounts() {
       window.location.assign(data.authorizationUrl);
     } catch (error) { setError(error.message); setBusy(false); }
   }
+  async function connectDevelopmentStore() {
+    setBusy(true); setError("");
+    try {
+      const response = await fetch("/api/shopify/dev/connect", { method: "POST" });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Could not connect the development store.");
+      setConnections((current) => ({ ...current, shopify: { ...current.shopify, connected: true, status: "CONNECTED", name: data.store?.name || data.shop, shop: data.shop, currency: data.store?.currency || null, storefrontUrl: data.store?.storefrontUrl || null } }));
+      setShop(data.shop);
+    } catch (error) { setError(error.message); } finally { setBusy(false); }
+  }
   return (
     <section className="reviewSection" aria-label="Connected accounts">
       <h2>Connected accounts</h2>
@@ -37,6 +47,7 @@ export default function ConnectedAccounts() {
           <label className="field"><span>Shopify store address</span><input value={shop} onChange={(event) => setShop(event.target.value)} placeholder="your-store.myshopify.com" maxLength="200" required /></label>
           <button type="submit" disabled={busy}>{busy ? "Connecting…" : connections.shopify.connected ? "Reconnect Shopify" : "Connect Shopify"}</button>
         </form>
+        {connections.shopify.developmentStoreAvailable && !connections.shopify.connected && <button type="button" onClick={connectDevelopmentStore} disabled={busy}>Use configured Shopify test store</button>}
         <div className="reviewRow"><span>Meta Ads</span>{connections.meta.connected ? <strong>{connections.meta.name || "Connected"}</strong> : <a href="/api/meta/auth/start">Connect Meta</a>}</div>
         <div className="reviewRow"><span>TikTok Ads</span><strong>{connections.tiktok.connected ? "Connected" : "Not available yet"}</strong></div>
       </>}

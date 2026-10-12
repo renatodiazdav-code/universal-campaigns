@@ -63,6 +63,13 @@ export function normalizeOfflineToken(data, now = Date.now(), previousScope = nu
   };
 }
 
+export function normalizeDevelopmentToken(data, now = Date.now()) {
+  if (typeof data?.access_token !== "string" || !data.access_token || !Number.isFinite(Number(data.expires_in)) || Number(data.expires_in) <= 0) {
+    throw new ShopifyError("Shopify returned an incomplete development-store token.", 502, "INVALID_TOKEN_RESPONSE");
+  }
+  return { accessToken: data.access_token, scope: SHOPIFY_PRODUCT_SCOPES.join(","), expiresAt: now + Number(data.expires_in) * 1000 };
+}
+
 export async function shopifyFetch(url, options, fetchImpl = fetch) {
   try { return await fetchImpl(url, { ...options, redirect: "error", signal: AbortSignal.timeout(15000) }); }
   catch { throw new ShopifyError("Shopify could not be reached. Try again shortly.", 503, "SHOPIFY_UNAVAILABLE"); }
@@ -88,6 +95,9 @@ export function exchangeShopifyCode(options) {
 }
 export function refreshShopifyToken(options) {
   return tokenRequest({ ...options, parameters: { grant_type: "refresh_token", refresh_token: options.refreshToken } });
+}
+export function exchangeDevelopmentToken(options) {
+  return tokenRequest({ ...options, parameters: { grant_type: "client_credentials" } });
 }
 
 export async function shopifyGraphql({ shop, accessToken, query, variables = {}, fetchImpl = fetch }) {

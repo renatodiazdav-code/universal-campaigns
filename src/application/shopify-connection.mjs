@@ -4,7 +4,7 @@ import { createConnectionStore } from "./connection-store.mjs";
 import { getRelayDatabase } from "../infrastructure/database.mjs";
 import {
   ShopifyError, SHOPIFY_PRODUCT_SCOPES, normalizeShopDomain, verifyShopifyCallback,
-  normalizeOfflineToken, exchangeShopifyCode, refreshShopifyToken, getShopifyStore,
+  normalizeOfflineToken, normalizeDevelopmentToken, exchangeShopifyCode, refreshShopifyToken, exchangeDevelopmentToken, getShopifyStore,
 } from "../connectors/shopify/client.mjs";
 
 const refreshes = new WeakMap();
@@ -12,6 +12,7 @@ const refreshes = new WeakMap();
 export function createShopifyConnectionService({
   db = getRelayDatabase(), store = createConnectionStore({ db }), fetchImpl = fetch, now = Date.now,
   clientId = process.env.SHOPIFY_CLIENT_ID, clientSecret = process.env.SHOPIFY_CLIENT_SECRET,
+  developmentShop = process.env.SHOPIFY_SHOP, allowDevelopment = process.env.NODE_ENV !== "production",
 } = {}) {
   function credentials() {
     if (!clientId || !clientSecret) throw new ShopifyError("Shopify connection is not configured yet.", 503, "APP_NOT_CONFIGURED");
@@ -19,6 +20,10 @@ export function createShopifyConnectionService({
   function activeSession(userId, sessionHash) {
     const session = db.prepare("SELECT user_id FROM sessions WHERE token_hash = ? AND expires_at > ?").get(sessionHash, now());
     if (!session || session.user_id !== userId) throw new ShopifyError("Sign in again before connecting Shopify.", 401, "INVALID_SESSION");
+  }
+  function configuredDevelopmentShop() {
+    if (!allowDevelopment || !developmentShop) throw new ShopifyError("A local Shopify development store is not configured.", 404, "DEVELOPMENT_STORE_UNAVAILABLE");
+    return normalizeShopDomain(developmentShop);
   }
   async function latestOrError(userId) {
     const latest = await store.forUser(userId).get("shopify");
@@ -39,11 +44,18 @@ export function createShopifyConnectionService({
       if (connection.expiresAt == null || connection.expiresAt > now() + 60000) return connection;
       try {
         credentials();
-        if (!connection.refreshToken || (connection.refreshExpiresAt != null && connection.refreshExpiresAt <= now())) {
+        const isDevelopmentConnection = connection.source === "DEVELOPMENT";
+        if (isDevelopmentConnection && connection.shop !== configuredDevelopmentShop()) {
           throw new ShopifyError("Reconnect Shopify to restore access.", 409, "REAUTHORIZE");
         }
-        const token = await refreshShopifyToken({ shop: connection.shop, refreshToken: connection.refreshToken, clientId, clientSecret, fetchImpl });
-        const updated = { ...connection, ...normalizeOfflineToken(token, now(), connection.scope), status: "CONNECTED", refreshedAt: new Date(now()).toISOString() };
+        if (!isDevelopmentConnection && (!connection.refreshToken || (connection.refreshExpiresAt != null && connection.refreshExpiresAt <= now()))) {
+          throw new ShopifyError("Reconnect Shopify to restore access.", 409, "REAUTHORIZE");
+        }
+        const token = isDevelopmentConnection
+          ? await exchangeDevelopmentToken({ shop: connection.shop, clientId, clientSecret, fetchImpl })
+          : await refreshShopifyToken({ shop: connection.shop, refreshToken: connection.refreshToken, clientId, clientSecret, fetchImpl });
+        const normalized = isDevelopmentConnection ? normalizeDevelopmentToken(token, now()) : normalizeOfflineToken(token, now(), connection.scope);
+        const updated = { ...connection, ...normalized, status: "CONNECTED", refreshedAt: new Date(now()).toISOString() };
         if (!await scoped.updateIfCurrent("shopify", updated, current.revision)) return latestOrError(userId);
         return updated;
       } catch (error) {
@@ -67,6 +79,16 @@ export function createShopifyConnectionService({
         .run(hashToken(state), userId, sessionHash, shop, now() + 10 * 60 * 1000);
       const params = new URLSearchParams({ client_id: clientId, scope: SHOPIFY_PRODUCT_SCOPES.join(","), redirect_uri: redirectUri, state });
       return { authorizationUrl: `https://${shop}/admin/oauth/authorize?${params}`, shop };
+    },
+    async connectDevelopmentStore({ userId, sessionHash }) {
+      credentials(); activeSession(userId, sessionHash);
+      const shop = configuredDevelopmentShop();
+      const response = await exchangeDevelopmentToken({ shop, clientId, clientSecret, fetchImpl });
+      const token = normalizeDevelopmentToken(response, now());
+      const storeMetadata = await getShopifyStore({ shop, accessToken: token.accessToken, fetchImpl });
+      const connection = { shop, ...token, store: storeMetadata, source: "DEVELOPMENT", status: "CONNECTED", connectedAt: new Date(now()).toISOString() };
+      await store.forUser(userId).save("shopify", connection);
+      return { shop, store: storeMetadata };
     },
     async complete({ userId, sessionHash, params }) {
       credentials(); activeSession(userId, sessionHash);

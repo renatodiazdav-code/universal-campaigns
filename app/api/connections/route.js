@@ -11,7 +11,8 @@ export const GET = withUser(async function GET(request, { user }) {
       status: connection?.status ?? (connection?.accessToken ? "CONNECTED" : "NOT_CONNECTED"),
       name: provider === "shopify" ? connection?.store?.name ?? connection?.shop ?? null : connection?.setup?.adAccount?.name ?? null,
       connectedAt: connection?.connectedAt ?? null,
-      ...(provider === "shopify" ? { shop: connection?.shop ?? null, currency: connection?.store?.currency ?? null, storefrontUrl: connection?.store?.storefrontUrl ?? null } : {}),
+      ...(provider === "shopify" ? { shop: connection?.shop ?? null, currency: connection?.store?.currency ?? null, storefrontUrl: connection?.store?.storefrontUrl ?? null,
+        developmentStoreAvailable: process.env.NODE_ENV !== "production" && Boolean(process.env.SHOPIFY_SHOP && process.env.SHOPIFY_CLIENT_ID && process.env.SHOPIFY_CLIENT_SECRET) } : {}),
     };
   }
   return Response.json({ connections });

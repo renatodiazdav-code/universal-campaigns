@@ -11,7 +11,7 @@ function setup(fetchImpl){
  const db=openRelayDatabase(':memory:');
  db.prepare('INSERT INTO users VALUES (?,?,?,?,?)').run('juan','juan@example.com','Juan','test-only','2026-10-12');
  const store=createConnectionStore({db,encryptionKey:randomBytes(32)});
- const service=createShopifyConnectionService({db,store,fetchImpl,now:()=>time,clientId:'app',clientSecret:'test-secret'});
+ const service=createShopifyConnectionService({db,store,fetchImpl,now:()=>time,clientId:'app',clientSecret:'test-secret',developmentShop:'luvixy'});
  return {db,store,service};
 }
 
@@ -84,6 +84,18 @@ test('legacy non-expiring development connections still work without a refresh r
  try{
   await store.forUser('juan').save('shopify',{shop:'luvixy',accessToken:'legacy',source:'DEVELOPMENT_IMPORT'});
   assert.equal((await service.get('juan')).accessToken,'legacy');assert.equal(calls,0);
+ }finally{db.close();}
+});
+
+test('the configured development store obtains a new client-credentials token before expiry',async()=>{
+ let calls=0;const {db,store,service}=setup(async(url,options)=>{
+  calls++;assert.equal(url,'https://luvixy.myshopify.com/admin/oauth/access_token');assert.equal(options.body.get('grant_type'),'client_credentials');assert.equal(options.body.get('client_secret'),'test-secret');
+  return Response.json({access_token:'new-development-token',expires_in:86400});
+ });
+ try{
+  await store.forUser('juan').save('shopify',{shop:'luvixy.myshopify.com',accessToken:'old-development-token',expiresAt:time+30000,source:'DEVELOPMENT',status:'CONNECTED'});
+  const connection=await service.get('juan');
+  assert.equal(calls,1);assert.equal(connection.accessToken,'new-development-token');assert.equal(connection.source,'DEVELOPMENT');assert.equal(connection.expiresAt,time+86400000);
  }finally{db.close();}
 });
 
