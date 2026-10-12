@@ -9,7 +9,7 @@ export async function listShopifyProducts({ shop, accessToken, first = 50, after
     query RelayProducts($first: Int!, $after: String, $search: String) {
       products(first: $first, after: $after, query: $search) {
         nodes {
-          id title handle status onlineStoreUrl
+          id title handle status onlineStoreUrl publishedAt
           featuredMedia { preview { image { url } } }
           images(first: 8) { nodes { url altText } }
           priceRangeV2 {
@@ -33,13 +33,19 @@ export async function getShopifyProducts(options) {
 export function shopifyProductToUniversalProduct(product, shop) {
   const price = product.priceRangeV2.minVariantPrice;
   const hasPublicationInfo = Object.hasOwn(product, "onlineStoreUrl");
+  // Shopify can return a null onlineStoreUrl for a published product in a
+  // development store. publishedAt is Shopify's explicit online-store signal.
+  const published = hasPublicationInfo
+    ? Boolean(product.onlineStoreUrl || product.publishedAt) && product.status !== "DRAFT" && product.status !== "ARCHIVED"
+    : undefined;
+  const fallbackUrl = `https://${normalizeShopDomain(shop)}/products/${encodeURIComponent(product.handle)}`;
   return {
     source: "SHOPIFY", id: product.id, title: product.title,
     price: Number(price.amount), currency: price.currencyCode,
     priceRange: { min: Number(price.amount), max: Number(product.priceRangeV2.maxVariantPrice?.amount ?? price.amount) },
     imageUrl: product.featuredMedia?.preview?.image?.url ?? product.images?.nodes?.[0]?.url ?? null,
     images: product.images?.nodes ?? [],
-    destinationUrl: hasPublicationInfo ? product.onlineStoreUrl : `https://${normalizeShopDomain(shop)}/products/${encodeURIComponent(product.handle)}`,
-    published: hasPublicationInfo ? Boolean(product.onlineStoreUrl) && product.status !== "DRAFT" && product.status !== "ARCHIVED" : undefined,
+    destinationUrl: hasPublicationInfo ? (published ? product.onlineStoreUrl || fallbackUrl : null) : fallbackUrl,
+    published,
   };
 }
