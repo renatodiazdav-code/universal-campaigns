@@ -23,6 +23,12 @@ test('unpublished products do not invent a public destination or pass campaign v
  assert.throws(()=>createUniversalCampaign({name:'Test',goal:'SALES',product:normalized}),/Publish this product/);
 });
 
+test('published development-store products use publishedAt when onlineStoreUrl is unavailable',()=>{
+ const normalized=shopifyProductToUniversalProduct({...product,onlineStoreUrl:null,publishedAt:'2026-10-12T20:00:00Z'},'luvixy');
+ assert.equal(normalized.destinationUrl,'https://luvixy.myshopify.com/products/sneakers');
+ assert.equal(normalized.published,true);
+});
+
 test('unsafe domains and invalid product query limits fail before any request',async()=>{
  let calls=0;const fetchImpl=async()=>{calls++;throw new Error('Should not fetch');};
  await assert.rejects(listShopifyProducts({shop:'127.0.0.1',accessToken:'test',fetchImpl}));
