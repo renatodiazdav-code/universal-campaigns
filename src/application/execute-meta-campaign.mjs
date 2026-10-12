@@ -169,6 +169,7 @@ export async function executeMetaCampaign({
         metaPlan.audience.excludedAudiences,
       detailedTargeting:
         metaPlan.audience.detailedTargeting,
+      attributionSpec: metaPlan.attribution.spec,
 
       optimizationGoal: "OFFSITE_CONVERSIONS",
       bidAmount,
@@ -283,6 +284,7 @@ export async function executeMetaCampaign({
           costCap: metaPlan.bidding.costCap,
           bidAmount,
         },
+        attribution: metaPlan.attribution,
         placements: metaPlan.placements,
         placementSettings: {
           mode: metaPlan.placementSettings.mode,
