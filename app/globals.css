@@ -252,9 +252,7 @@ button {
   font-weight: 600;
 }
 
-.shopifyStart { max-width: 430px; margin: 26px 0; }
-.shopifyStart button { background: #0755ed; width: 100%; }
-.shopifyStart button:disabled { opacity: .6; cursor: wait; }
+.shopifyStartButton { display: inline-flex; justify-content: center; width: min(430px, 100%); margin: 26px 0; border-radius: 10px; background: #0755ed; color: white; text-align: center; text-decoration: none; font-weight: 600; }
 .shopifyMediaPicker { margin: 20px 0; }
 .shopifyMediaPicker p { color: #666; }
 .shopifyMediaGrid { display: flex; gap: 10px; overflow-x: auto; padding: 4px; }

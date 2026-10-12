@@ -13,6 +13,13 @@ export function createShopifyOnboarding({ db = getRelayDatabase(), connections =
     if (!clientId || !clientSecret) throw new ShopifyError("Shopify sign-up is not configured yet.", 503, "APP_NOT_CONFIGURED");
   }
   return {
+    startFromShopifyLaunch({ params, redirectUri }) {
+      credentials();
+      if (!verifyShopifyCallback(params, clientSecret, now())) {
+        throw new ShopifyError("Shopify could not verify this store. Open Relay from Shopify again.", 403, "INVALID_SIGNATURE");
+      }
+      return this.start({ shop: params.get("shop"), redirectUri });
+    },
     start({ shop, redirectUri }) {
       credentials();
       shop = normalizeShopDomain(shop);

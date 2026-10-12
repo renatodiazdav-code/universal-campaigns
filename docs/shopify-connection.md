@@ -4,17 +4,19 @@
 
 1. Run `npm run setup:local` if `.env.local` is not configured.
 2. Set `SHOPIFY_CLIENT_ID` and `SHOPIFY_CLIENT_SECRET` to the Relay Shopify app credentials in `.env.local`. These belong to Relay, not to individual merchants. Do not commit or send them in chat.
-3. Configure Shopify's allowed redirect URL as the public HTTPS Relay origin plus `/api/shopify/onboarding/callback`. The landing-page sign-up starts OAuth before the Relay account exists. The older signed-in `/api/shopify/auth/*` routes remain available for existing accounts, with their own callback URL.
+3. Set `SHOPIFY_INSTALL_URL` to the official install/listing link supplied by Shopify for the app (not a made-up OAuth URL). The landing button goes there, where Shopify handles account/store selection. Set the app's **App URL** to the public Relay origin plus `/api/shopify/onboarding/entry`; Shopify must launch that URL with signed `shop`, `hmac` and `timestamp` parameters. Set the allowed OAuth redirect URL to the same origin plus `/api/shopify/onboarding/callback`. The older signed-in `/api/shopify/auth/*` routes remain for existing accounts, with their own callback URL.
 4. Configure `read_products` access in the app. Relay currently requests only this scope; no customer, order or write access is requested.
 
 For an isolated local test store, `SHOPIFY_SHOP=luvixy` and the server-side development token endpoint can still be used by a signed-in tester; it is not exposed as merchant onboarding UI.
 
-Live OAuth cannot be verified with a simulated Shopify provider. External merchant OAuth needs app distribution approval and its redirect URL configured through the Shopify app configuration before opening Relay to other stores.
+For a local Cloudflare tunnel, set `APP_URL` to its HTTPS origin and restart Relay. Shopify's App URL and redirect URL must use that identical origin. Quick-tunnel URLs change when restarted, so update both settings when the URL changes. Live OAuth cannot be verified with a simulated Shopify provider. External merchant OAuth needs the appropriate app distribution and live validation before opening Relay to other stores.
 
 ## Implemented behavior
 
 | Endpoint | Behavior |
 |---|---|
+| GET `/api/shopify/onboarding/install` | Redirects to the configured official Shopify installation link; no store address input in Relay |
+| GET `/api/shopify/onboarding/entry` | Verifies Shopify's signed app launch, identifies the store, binds an OAuth state to this browser and redirects to Shopify's authorization page |
 | POST `/api/shopify/onboarding/start` | Public same-origin `{shop}` request returns official Shopify authorization URL and sets a short-lived, HttpOnly browser nonce |
 | GET `/api/shopify/onboarding/callback` | Verifies Shopify HMAC, timestamp and one-use state tied to the browser/store; creates or finds the store-owned Relay account, stores encrypted tokens, issues a Relay session and redirects to `/campaigns` |
 | POST `/api/shopify/auth/start` | Requires a session and same-origin request; accepts `{shop}` and returns Shopify's authorization URL |

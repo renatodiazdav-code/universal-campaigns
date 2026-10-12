@@ -5,6 +5,7 @@ import { openRelayDatabase } from "../src/infrastructure/database.mjs";
 import { createConnectionStore } from "../src/application/connection-store.mjs";
 import { createShopifyOnboarding } from "../src/application/shopify-onboarding.mjs";
 import { createAuthService } from "../src/application/auth-service.mjs";
+import { shopifyInstallUrl } from "../src/application/shopify-install-link.mjs";
 
 const now = 1800000000000;
 const secret = "test-shopify-secret";
@@ -69,4 +70,28 @@ test("wrong browser, wrong store, expired state and forged signature cannot exch
     await assert.rejects(onboarding.complete({ params: forged, browserNonce: start.browserNonce }), (error) => error.code === "INVALID_SIGNATURE");
     assert.equal(getExchanges(), 0);
   } finally { db.close(); }
+});
+
+test("signed Shopify app launch starts OAuth without a merchant-entered store address", async () => {
+  const { db, onboarding, getExchanges } = setup();
+  try {
+    const params = sign({ shop: "luvixy.myshopify.com", timestamp: String(now / 1000), host: "admin.shopify.com" });
+    const start = onboarding.startFromShopifyLaunch({ params, redirectUri: "https://relay.test/api/shopify/onboarding/callback" });
+    assert.equal(new URL(start.authorizationUrl).hostname, "luvixy.myshopify.com");
+    assert.equal(start.browserNonce.length, 43);
+    const result = await onboarding.complete({ params: callback(start), browserNonce: start.browserNonce });
+    assert.equal(result.shop, "luvixy.myshopify.com");
+    assert.equal(getExchanges(), 1);
+    const tampered = new URLSearchParams(params); tampered.set("shop", "attacker.myshopify.com");
+    assert.throws(() => onboarding.startFromShopifyLaunch({ params: tampered, redirectUri: "https://relay.test/callback" }), (error) => error.code === "INVALID_SIGNATURE");
+    assert.throws(() => onboarding.startFromShopifyLaunch({ params: sign({ shop: "attacker.example.com", timestamp: String(now / 1000) }), redirectUri: "https://relay.test/callback" }), (error) => error.code === "INVALID_SHOP");
+  } finally { db.close(); }
+});
+
+test("install URL accepts only Shopify HTTPS links and does not invent an install URL", () => {
+  assert.equal(shopifyInstallUrl("https://apps.shopify.com/relay"), "https://apps.shopify.com/relay");
+  assert.equal(shopifyInstallUrl("https://admin.shopify.com/store/luvixy/oauth/install_custom_app?client_id=abc").includes("install_custom_app"), true);
+  for (const url of ["", "http://apps.shopify.com/relay", "https://apps.shopify.com.evil.test/relay", "https://user@admin.shopify.com/", "https://shopify.com/", "javascript:alert(1)"]) {
+    assert.throws(() => shopifyInstallUrl(url), (error) => error.code === "INSTALL_LINK_NOT_CONFIGURED" || error.code === "INVALID_INSTALL_LINK");
+  }
 });

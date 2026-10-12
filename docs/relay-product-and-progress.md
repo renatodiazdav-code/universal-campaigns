@@ -5,7 +5,7 @@ Updated: 2026-10-12
 ## Confirmed product direction
 
 - Shopify ecommerce sales is the initial scope.
-- The landing starts with Shopify authorization. Shopify grants identify the merchant's Relay account and link the store before the dashboard; Meta and TikTok connections are available there.
+- The landing links to Shopify's official installation flow without asking for a store address. Shopify's signed app launch identifies the store; an authorization grant then links it to the merchant's Relay account before the dashboard. Meta is connected there; TikTok awaits approval and implementation.
 - One campaign creator: product, platforms, audience/budget, creative, review.
 - Universal configures shared values. Meta Ads and TikTok Ads allow independent overrides.
 - Facebook and Instagram belong to the Meta integration.
