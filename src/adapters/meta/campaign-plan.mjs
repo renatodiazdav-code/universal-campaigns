@@ -69,12 +69,19 @@ export function buildMetaCampaignPlan(campaign) {
       ageMax: campaign.audience.ageMax,
       gender: campaign.audience.gender,
       strategy: advanced.audience.strategy,
+      mode: advanced.audience.mode,
       advantageAudience:
         advanced.audience.advantageAudience,
       allowAgeExpansion:
         advanced.audience.allowAgeExpansion,
       allowGenderExpansion:
         advanced.audience.allowGenderExpansion,
+      includedAudiences:
+        advanced.audience.includedAudiences,
+      excludedAudiences:
+        advanced.audience.excludedAudiences,
+      detailedTargeting:
+        advanced.audience.detailedTargeting,
     },
 
     bidding: advanced.bidding,
